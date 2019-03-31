@@ -33,31 +33,32 @@ def parse(query):
     the term frequency
     """
     tokens = (normalise(token) for token in word_tokenize(query))
-    result = Counter()
-    for token in tokens:
-        result[token] += 1
-    return result
+    return Counter(tokens)
 
 
 def get_weighted_tf(count):
     """
-    Calculates the weighted term frequency.
+    Calculates the weighted term frequency
+    using the 'logarithm' scheme.
     """
-    return 1 + log(count, 10)
+    BASE = 10
+    return log(BASE * count, BASE)
 
 
 def get_weighted_tfs(counts):
     """
     Calculate the weighted term frequencies.
     """
-    result = {}
-    for key, value in counts.items():
-        result[key] = get_weighted_tf(value)
-    return result
+    return dict(
+        map(
+            lambda key, val: (key, get_weighted_tf(val),
+            counts.items())))
 
 
 def normalise(token, cache={}):
-    """Returns a normalised token. Normalised tokens are cached for performance"""
+    """
+    Returns a normalised token. Normalised tokens are cached for performance
+    """
     token = token.lower()
     if token in cache:
         return cache[token]
@@ -68,7 +69,8 @@ def normalise(token, cache={}):
 
 def load_postings(postings_file, dictionary, term):
     """
-    Loads postings from postings file using memory location provided by dictionary
+    Loads postings from postings file using memory
+    location provided by dictionary.
     """
     # Returns an empty linkedlist if term is not in dictionary
     if term not in dictionary:
