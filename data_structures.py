@@ -48,6 +48,9 @@ class LinkedList(object):
     def __init__(self):
         self._data = []
 
+    def __init__(self, data):
+        self._data = [[value, None] for value in data]
+
     def __len__(self):
         return len(self._data)
 
@@ -60,6 +63,9 @@ class LinkedList(object):
         Adds a new value to the tail of this linked list.
         """
         self._data.append([value, None])
+
+    def extend(self, values):
+        self._data.extend([value, None] for value in values)
 
     def get_head(self):
         """
