@@ -61,6 +61,9 @@ class LinkedList(object):
         """
         self._data.append([value, None])
 
+    def extend(self, values):
+        self._data.extend([value, None] for value in values)
+
     def get_head(self):
         """
         Gets the head node of this linked list.

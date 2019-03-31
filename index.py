@@ -26,12 +26,17 @@ def build_bitriword_index(data):
     A compound index with both biword indexes and triword tokens is built.
     """
     index = defaultdict(LinkedList)
-    for doc_id, content in data:
-        bitriword_tokens = get_bitriword_tokens(content)
+    print("Generating all biword/triword token sets")
+    all_bitriword_tokens = [
+        get_bitriword_tokens(content) for _, content in data
+    ]
+    index["ALL"].extend(doc_id for doc_id, _ in data)
+    print("Adding the tokens to the index")
+    for (doc_id, _), bitriword_tokens in zip(data, all_bitriword_tokens):
         for token in bitriword_tokens:
             # None is the second element appended as no relevant weights
-            index[token].append((doc_id, None))
-        index["ALL"].append(doc_id)
+            index[token].append(doc_id)
+    print("Building skips...")
     for postings in index.values():
         postings.build_skips()
     return index
@@ -42,14 +47,17 @@ def get_bitriword_tokens(content):
     Tokenise the text contained in the given filename to biword
     and triword tokens.
     """
-    tokens = set()
     # Build biword
-    for i in range(len(content) - 1):
-        tokens.add(" ".join((content[i], content[i + 1])))
+    biword_tokens = {
+        " ".join(content[i:i + 2])
+        for i in range(len(content) - 1)
+    }
     # Build triword
-    for i in range(len(content) - 2):
-        tokens.add(" ".join((content[i], content[i + 1], content[i + 2])))
-    return tokens
+    triword_tokens = {
+        " ".join(content[i:i + 3])
+        for i in range(len(content) - 2)
+    }
+    return biword_tokens.union(triword_tokens)
 
 
 def build_tfidf_index(data):
@@ -59,11 +67,14 @@ def build_tfidf_index(data):
     index = defaultdict(LinkedList)
     doc_vector_lengths = {}
     all_docs_length = len(data)
-    for doc_id, content in data:
-        token_count = get_token_weights(content)
+    all_token_count = [get_token_weights(content) for _, content in data]
+    doc_vector_lengths = {
+        doc_id: get_document_vector_length(token_count)
+        for (doc_id, _), token_count in zip(data, all_token_count)
+    }
+    for (doc_id, content), token_count in zip(data, all_token_count):
         for token, count in token_count.items():
             index[token].append((doc_id, count))
-        doc_vector_lengths[doc_id] = get_document_vector_length(token_count)
 
     return index, doc_vector_lengths, all_docs_length
 
@@ -73,9 +84,7 @@ def get_token_weights(content):
     Tokenise the text contained in the given filename.
     """
     token_count = Counter(content)
-    return dict(map(
-        lambda key, val: (key, get_weighted_tf(val)),
-        token_count.items()))
+    return {k: get_weighted_tf(v) for k, v in token_count.items()}
 
 
 def get_document_vector_length(token_count):
@@ -90,13 +99,10 @@ def read_data_file(input_file):
     """
     Return a list of data sorted by the file name
     """
-    data = []
     csv.field_size_limit(sys.maxsize)
     with open(input_file) as csv_file:
         reader = csv.reader(csv_file, delimiter=",")
-        for row in reader:
-            data.append((row[0], parse_content(row[2])))
-    return data
+        return [(row[0], parse_content(row[2])) for row in reader]
 
 
 def parse_content(content):
