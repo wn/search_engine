@@ -34,17 +34,19 @@ def build_bitriword_index(data):
         index["ALL"].append(doc_id)
     for postings in index.values():
         postings.build_skips()
-
     return index
 
 
 def get_bitriword_tokens(content):
     """
-    Tokenise the text contained in the given filename to biword and triword tokens.
+    Tokenise the text contained in the given filename to biword
+    and triword tokens.
     """
     tokens = set()
+    # Build biword
     for i in range(len(content) - 1):
         tokens.add(" ".join((content[i], content[i + 1])))
+    # Build triword
     for i in range(len(content) - 2):
         tokens.add(" ".join((content[i], content[i + 1], content[i + 2])))
     return tokens
@@ -70,17 +72,16 @@ def get_token_weights(content):
     """
     Tokenise the text contained in the given filename.
     """
-    token_count = Counter()
-    for word in content:
-        token_count[word] += 1
-    for key in token_count.keys():
-        token_count[key] = get_weighted_tf(token_count[key])
-    return token_count
+    token_count = Counter(content)
+    return dict(map(
+        lambda key, val: (key, get_weighted_tf(val)),
+        token_count.items()))
 
 
 def get_document_vector_length(token_count):
     """
-    Calculates the vector normalisation factor.
+    Calculates the vector normalisation factor
+    using the 'cosine normalization' scheme.
     """
     return sqrt(sum(val**2 for val in token_count.values()))
 
@@ -117,16 +118,19 @@ def normalise(word, cache={}):
 
 def get_idf(all_docs_length, val):
     """
-    Calculates the inverse document frequency.
+    Calculates the inverse document frequency using
+    the 'inverse collection frequency' scheme.
     """
     return log((float(all_docs_length) / val), 10)
 
 
 def get_weighted_tf(count):
     """
-    Calculates the weighted term frequency.
+    Calculates the weighted term frequency using the
+    'logarithm' scheme.
     """
-    return 1 + log(count, 10)
+    BASE = 10
+    return log(BASE * count, BASE)
 
 
 def store_indexes(index, vector_lengths, bitriword_indexes,
