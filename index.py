@@ -3,7 +3,6 @@ from collections import defaultdict, Counter
 import cPickle
 import getopt
 from math import sqrt, log
-from os import listdir
 import sys
 import csv
 
@@ -30,7 +29,7 @@ def build_bitriword_index(data):
     for doc_id, content in data:
         bitriword_tokens = get_bitriword_tokens(content)
         for token in bitriword_tokens:
-            #None is the second element appended as no relevant weights
+            # None is the second element appended as no relevant weights
             index[token].append((doc_id, None))
         index["ALL"].append(doc_id)
     for postings in index.values():
@@ -153,7 +152,7 @@ def store_indexes(index, vector_lengths, bitriword_indexes,
             pickled = cPickle.dumps(value, 2)
             postings_file.write(pickled)
             length = len(pickled)
-            dictionary[key] = (len(value), offset, length)
+            bitriword_dictionary[key] = (len(value), offset, length)
             offset += length
 
     with open(output_file_dictionary, "wb") as dictionary_file:
