@@ -48,9 +48,6 @@ class LinkedList(object):
     def __init__(self):
         self._data = []
 
-    def __init__(self, data):
-        self._data = [[value, None] for value in data]
-
     def __len__(self):
         return len(self._data)
 
