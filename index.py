@@ -29,7 +29,8 @@ def build_bitriword_index(data):
     all_bitriword_tokens = [
         get_bitriword_tokens(content) for _, content in data
     ]
-    index["ALL"] = LinkedList(doc_id for doc_id, _ in data)
+    index["ALL"].extend(doc_id for doc_id, _ in data)
+    print("Generated all biword/triword token sets")
     for (doc_id, _), bitriword_tokens in zip(data, bitriword_tokens):
         for token in bitriword_tokens:
             # None is the second element appended as no relevant weights
