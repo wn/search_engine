@@ -26,15 +26,17 @@ def build_bitriword_index(data):
     A compound index with both biword indexes and triword tokens is built.
     """
     index = defaultdict(LinkedList)
+    print("Generating all biword/triword token sets")
     all_bitriword_tokens = [
         get_bitriword_tokens(content) for _, content in data
     ]
     index["ALL"].extend(doc_id for doc_id, _ in data)
-    print("Generated all biword/triword token sets")
-    for (doc_id, _), bitriword_tokens in zip(data, bitriword_tokens):
+    print("Adding the tokens to the index")
+    for (doc_id, _), bitriword_tokens in zip(data, all_bitriword_tokens):
         for token in bitriword_tokens:
             # None is the second element appended as no relevant weights
             index[token].append((doc_id, None))
+    print("Building skips...")
     for postings in index.values():
         postings.build_skips()
     return index
