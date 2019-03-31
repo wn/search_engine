@@ -20,6 +20,7 @@ def usage():
     print("usage: " + sys.argv[0] +
           " -i directory-of-documents -d dictionary-file -p postings-file")
 
+
 def build_bitriword_index(data):
     """
     Builds an inverted index out of the files in the input_file.
@@ -37,16 +38,18 @@ def build_bitriword_index(data):
 
     return index
 
+
 def get_bitriword_tokens(content):
     """
     Tokenise the text contained in the given filename to biword and triword tokens.
     """
     tokens = set()
     for i in range(len(content) - 1):
-        tokens.add(" ".join((content[i], content[i+1])))
+        tokens.add(" ".join((content[i], content[i + 1])))
     for i in range(len(content) - 2):
-        tokens.add(" ".join((content[i], content[i+1], content[i+2])))
+        tokens.add(" ".join((content[i], content[i + 1], content[i + 2])))
     return tokens
+
 
 def build_tfidf_index(data):
     """
@@ -62,7 +65,6 @@ def build_tfidf_index(data):
         doc_vector_lengths[doc_id] = get_document_vector_length(token_count)
 
     return index, doc_vector_lengths, all_docs_length
-
 
 
 def get_token_weights(content):
@@ -96,9 +98,11 @@ def read_data_file(input_file):
             data.append((row[0], parse_content(row[2])))
     return data
 
+
 def parse_content(content):
     content = unicode(content, 'utf-8')
     return [normalise(word) for word in nltk.word_tokenize(content)]
+
 
 def normalise(word, cache={}):
     """
@@ -126,8 +130,8 @@ def get_weighted_tf(count):
     return 1 + log(count, 10)
 
 
-def store_indexes(index, vector_lengths, bitriword_indexes, output_file_dictionary,
-                               output_file_postings, num_documents):
+def store_indexes(index, vector_lengths, bitriword_indexes,
+                  output_file_dictionary, output_file_postings, num_documents):
     """
     Stores the index into the given dictionary file and postings file.
     """
@@ -190,9 +194,8 @@ def main():
     print("3. Building Biword Triword index")
     bitriword_index = build_bitriword_index(data)
     print("4. Storing index")
-    store_indexes(index, vector_lengths, bitriword_index, output_file_dictionary,
-                               output_file_postings, num_documents)
-
+    store_indexes(index, vector_lengths, bitriword_index,
+                  output_file_dictionary, output_file_postings, num_documents)
 
 
 if __name__ == "__main__":
