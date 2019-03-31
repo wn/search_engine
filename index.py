@@ -35,7 +35,7 @@ def build_bitriword_index(data):
     for (doc_id, _), bitriword_tokens in zip(data, all_bitriword_tokens):
         for token in bitriword_tokens:
             # None is the second element appended as no relevant weights
-            index[token].append((doc_id, None))
+            index[token].append(doc_id)
     print("Building skips...")
     for postings in index.values():
         postings.build_skips()
