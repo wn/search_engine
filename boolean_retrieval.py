@@ -48,40 +48,34 @@ def perform_boolean_query(query_pairs: List[Tuple[str, str]],
     :return: A LinkedList of document IDs.
     """
     def get_postings_list_length(query_pair: Tuple[str, str]) -> int:
-        """Helper function to get a postings list length of a phrase/term. Assumes that phrase exists."""
+        """Helper function to get a postings list length of a phrase/term."""
         term_type, phrase = query_pair
-        if term_type == QueryType.PHRASE:
+        if phrase not in bitriword_dictionary and phrase not in tfidf_dictionary:
+            return 0
+        elif term_type == QueryType.PHRASE:
             return bitriword_dictionary[phrase][0]
         elif term_type == QueryType.NON_PHRASE:
             return tfidf_dictionary[phrase][0][1]
 
     def get_postings_list(term_type: str, phrase: str) -> LinkedList:
-        """Helper function to get a postings list length of a phrase/term. Returns empty Linked"""
-        if term_type == QueryType.PHRASE:
+        """Helper function to get a postings list length of a phrase/term.
+        Returns empty LinkedList if phrase does not exist."""
+        if phrase not in bitriword_dictionary and phrase not in tfidf_dictionary:
+            return LinkedList()
+        elif term_type == QueryType.PHRASE:
             _, offset, length = bitriword_dictionary[phrase]
-        else:
+        elif term_type == QueryType.NON_PHRASE:
             _, offset, length = tfidf_dictionary[phrase]
         postings_file.seek(offset)
         return pickle.loads(postings_file.read(length))
 
-    def phrase_exists(term_type: str, phrase: str) -> bool:
-        if term_type == QueryType.PHRASE and phrase in bitriword_dictionary:
-            return True
-        elif term_type == QueryType.NON_PHRASE and phrase in tfidf_dictionary:
-            return True
-        else:
-            return False
-
-    # If any query term does not exists, return an empty list.
-    if any(map(neg, starmap(phrase_exists, query_pairs))):
-        return LinkedList()
-
-    # Optimization for faster AND computation -- do the smaller list first
+    # Optimization for faster AND computation -- do the smaller list first.
     list.sort(query_pairs, key=get_postings_list_length)
 
     # Generate a list of Postings lists
     postings_lists: Iterable[LinkedList] = starmap(get_postings_list, query_pairs)
 
+    # Return the AND of all the Postings lists
     return reduce(perform_and, postings_lists)
 
 
