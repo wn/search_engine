@@ -1,5 +1,8 @@
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, IO, Iterable
 from enum import Enum
+import pickle
+from functools import reduce
+from .data_structures import LinkedList
 
 
 class BooleanConstants(Enum):
@@ -8,30 +11,77 @@ class BooleanConstants(Enum):
     PHRASE = 'phrase'
     NON_PHRASE = 'nonphrase'
 
+def perform_and(operand_a: LinkedList, operand_b: LinkedList) -> LinkedList:
+    """Returns all ids that are ids of operand a and operand b. Copied from HW2."""
+    result = LinkedList()
+    operand_a, operand_b = operand_a.get_head(), operand_b.get_head()
+    while operand_a is not None and operand_b is not None:
+        if operand_a.value == operand_b.value:
+            result.append(operand_a.value)
+            operand_a = operand_a.next()
+            operand_b = operand_b.next()
+        elif operand_a.value < operand_b.value:
+            if operand_a.skip() and operand_a.skip().value <= operand_b.value:
+                operand_a = operand_a.skip()
+            else:
+                operand_a = operand_a.next()
+        elif operand_b.skip() and operand_b.skip().value <= operand_a.value:
+            operand_b = operand_b.skip()
+        else:
+            operand_b = operand_b.next()
+    return result
 
-def filter_docs_by_boolean_query(parsed_query: Tuple[str, List[Tuple[str, str]]],
-                                 tfidf_dictionary: Dict[str, List],
-                                 bitriword_dictionary: Dict[Tuple, List]) -> List[int]:
+
+def perform_boolean_query(query_pairs: List[Tuple[str, str]],
+                          tfidf_dictionary: Dict[str, Tuple],
+                          bitriword_dictionary: Dict[str, Tuple],
+                          postings_file: IO) -> LinkedList:
     """
-    Filters the query by boolean AND logic if the query provided is a boolean query. Returns all documents if a
-    free text query is provided.
+    Returns a LinkedList of documents that satisfy a purely conjunctive boolean query.
 
-    :param parsed_query: A Tuple containing ('boolean' | 'free text', <query>).
-        <query> is a List of Tuples with the form (<'phrase' | 'nonphrase', <term>)
+    :param query_pairs: A Tuple containing a List of Tuples with the form (<'phrase' | 'nonphrase', <term>)
         where <term> is a query term/phrase.
-    :return: A list of document IDs.
+    :param tfidf_dictionary the TF-IDF dictionary
+    :param bitriword_dictionary the biword/triword dictionary
+    :param postings_file the file descriptor for the postings list file.
+    :return: A LinkedList of document IDs.
     """
-    is_boolean_query = parsed_query[0] == BooleanConstants.BOOLEAN
-    query = parsed_query[1]
-    documents = tfidf_dictionary['ALL']
-
-    if not is_boolean_query:
-        return documents
-
-    for term_type, phrase in query:
+    def get_postings_list_length(query_pair: Tuple[str, str]) -> int:
+        """Helper function to get a postings list length of a phrase/term. Assumes that phrase exists."""
+        term_type, phrase = query_pair
         if term_type == BooleanConstants.PHRASE:
-            documents = filter(has_phrase(phrase, tfidf_dictionary), documents)
+            return bitriword_dictionary[phrase][0]
         elif term_type == BooleanConstants.NON_PHRASE:
-            documents = filter(has_term(phrase, bitriword_dictionary), documents)
+            return tfidf_dictionary[phrase][0][1]
 
-    return list(documents)
+    def get_postings_list(query_pair: Tuple[str, str]) -> LinkedList:
+        """Helper function to get a postings list length of a phrase/term. Returns empty Linked"""
+        term_type, phrase = query_pair
+        if term_type == BooleanConstants.PHRASE:
+            _, offset, length = bitriword_dictionary[phrase]
+        else:
+            _, offset, length = tfidf_dictionary[phrase]
+        postings_file.seek(offset)
+        return pickle.loads(postings_file.read(length))
+
+    def phrase_exists(query_pair: Tuple[str, str]) -> bool:
+        term_type, phrase = query_pair
+        if term_type == BooleanConstants.PHRASE and phrase in bitriword_dictionary:
+            return True
+        elif term_type == BooleanConstants.NON_PHRASE and phrase in tfidf_dictionary:
+            return True
+        else:
+            return False
+
+    if any(not phrase_exists for query_pair in query_pairs):
+        return LinkedList()
+
+    # Optimization for faster AND computation
+    list.sort(query_pairs, key=get_postings_list_length)
+
+    # Generate a list of Postings lists
+    postings_lists: Iterable = map(get_postings_list, query_pairs)
+
+    return reduce(perform_and, postings_lists)
+
+
