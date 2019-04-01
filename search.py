@@ -87,13 +87,13 @@ def load_dictionary(dictionary_file_location):
     """
     with open(dictionary_file_location, 'r') as dictionary_file:
         dictionary, bitriword_dictionary = cPickle.load(dictionary_file)
-    return dictionary
+    return dictionary, bitriword_dictionary
 
 
 ####################
 # Query processing #
 ####################
-def process_queries(dictionary, postings_file_location,
+def process_queries(tfidf_dictionary, bitriword_dictionary, postings_file_location,
                     file_of_queries_location, file_of_output_location):
     """
     Process all the queries in the queries file.
@@ -103,24 +103,24 @@ def process_queries(dictionary, postings_file_location,
             open(file_of_output_location, 'w') as output_file:
         for query in queries:
             try:
-                process_query(query, dictionary, postings_file, output_file)
+                process_query(query, tfidf_dictionary, bitriword_dictionary, postings_file, output_file)
             except Exception as e:
                 output_file.write("\n")
 
 
-def process_query(query, dictionary, postings_file, output_file):
+def process_query(query, tfidf_dictionary, bitriword_dictionary, postings_file, output_file):
     """
     Calculates the cosine scores of the documents, get 10 documents with the
     highest scores and writes to file
     """
     scores = Counter()
-    lengths = dictionary["LENGTHS"]
+    lengths = tfidf_dictionary["LENGTHS"]
     weighted_tfs = get_weighted_tfs(parse(query))
     for term, tf_q in weighted_tfs.items():
-        if term not in dictionary:
+        if term not in tfidf_dictionary:
             continue
-        postings = load_postings(postings_file, dictionary, term)
-        idf = dictionary[term][0]
+        postings = load_postings(postings_file, tfidf_dictionary, term)
+        idf = tfidf_dictionary[term][0]
         for doc, tf_d in postings:
             scores[doc] += tf_d * tf_q * idf
     for doc in scores.keys():
@@ -169,9 +169,9 @@ def main():
         usage()
         sys.exit(2)
 
-    dictionary = load_dictionary(dictionary_file)
+    tfidf_dictionary, bitriword_dictionary = load_dictionary(dictionary_file)
 
-    process_queries(dictionary, postings_file, file_of_queries, file_of_output)
+    process_queries(tfidf_dictionary, bitriword_dictionary, postings_file, file_of_queries, file_of_output)
 
 
 if __name__ == "__main__":
