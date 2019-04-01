@@ -10,8 +10,7 @@ class BooleanConstants(Enum):
 
 
 def filter_docs_by_boolean_query(parsed_query: Tuple[str, List[Tuple[str, str]]],
-                                 documents: List[int],
-                                 dictionary: Dict[str, List],
+                                 tfidf_dictionary: Dict[str, List],
                                  bitriword_dictionary: Dict[Tuple, List]) -> List[int]:
     """
     Filters the query by boolean AND logic if the query provided is a boolean query. Returns all documents if a
@@ -24,16 +23,15 @@ def filter_docs_by_boolean_query(parsed_query: Tuple[str, List[Tuple[str, str]]]
     """
     is_boolean_query = parsed_query[0] == BooleanConstants.BOOLEAN
     query = parsed_query[1]
+    documents = tfidf_dictionary['ALL']
 
     if not is_boolean_query:
         return documents
 
-    for term_type, phrase_or_term in query:
+    for term_type, phrase in query:
         if term_type == BooleanConstants.PHRASE:
-            phrase = phrase_or_term
-            documents = documents
+            documents = filter(has_phrase(phrase, tfidf_dictionary), documents)
         elif term_type == BooleanConstants.NON_PHRASE:
-            term = phrase_or_term
-            documents = documents
+            documents = filter(has_term(phrase, bitriword_dictionary), documents)
 
-    return documents
+    return list(documents)
