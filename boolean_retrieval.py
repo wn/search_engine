@@ -3,13 +3,14 @@ from enum import Enum
 import pickle
 from functools import reduce
 from .data_structures import LinkedList
+from itertools import starmap
+from operator import neg
 
 
-class BooleanConstants(Enum):
-    BOOLEAN = 'boolean'
-    FREE_TEXT = 'free_text'
+class QueryType(Enum):
     PHRASE = 'phrase'
     NON_PHRASE = 'nonphrase'
+
 
 def perform_and(operand_a: LinkedList, operand_b: LinkedList) -> LinkedList:
     """Returns all ids that are ids of operand a and operand b. Copied from HW2."""
@@ -49,38 +50,37 @@ def perform_boolean_query(query_pairs: List[Tuple[str, str]],
     def get_postings_list_length(query_pair: Tuple[str, str]) -> int:
         """Helper function to get a postings list length of a phrase/term. Assumes that phrase exists."""
         term_type, phrase = query_pair
-        if term_type == BooleanConstants.PHRASE:
+        if term_type == QueryType.PHRASE:
             return bitriword_dictionary[phrase][0]
-        elif term_type == BooleanConstants.NON_PHRASE:
+        elif term_type == QueryType.NON_PHRASE:
             return tfidf_dictionary[phrase][0][1]
 
-    def get_postings_list(query_pair: Tuple[str, str]) -> LinkedList:
+    def get_postings_list(term_type: str, phrase: str) -> LinkedList:
         """Helper function to get a postings list length of a phrase/term. Returns empty Linked"""
-        term_type, phrase = query_pair
-        if term_type == BooleanConstants.PHRASE:
+        if term_type == QueryType.PHRASE:
             _, offset, length = bitriword_dictionary[phrase]
         else:
             _, offset, length = tfidf_dictionary[phrase]
         postings_file.seek(offset)
         return pickle.loads(postings_file.read(length))
 
-    def phrase_exists(query_pair: Tuple[str, str]) -> bool:
-        term_type, phrase = query_pair
-        if term_type == BooleanConstants.PHRASE and phrase in bitriword_dictionary:
+    def phrase_exists(term_type: str, phrase: str) -> bool:
+        if term_type == QueryType.PHRASE and phrase in bitriword_dictionary:
             return True
-        elif term_type == BooleanConstants.NON_PHRASE and phrase in tfidf_dictionary:
+        elif term_type == QueryType.NON_PHRASE and phrase in tfidf_dictionary:
             return True
         else:
             return False
 
-    if any(not phrase_exists for query_pair in query_pairs):
+    # If any query term does not exists, return an empty list.
+    if any(map(neg, starmap(phrase_exists, query_pairs))):
         return LinkedList()
 
-    # Optimization for faster AND computation
+    # Optimization for faster AND computation -- do the smaller list first
     list.sort(query_pairs, key=get_postings_list_length)
 
     # Generate a list of Postings lists
-    postings_lists: Iterable = map(get_postings_list, query_pairs)
+    postings_lists: Iterable[LinkedList] = starmap(get_postings_list, query_pairs)
 
     return reduce(perform_and, postings_lists)
 
