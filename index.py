@@ -1,6 +1,5 @@
-from __future__ import print_function
 from collections import defaultdict, Counter
-import cPickle
+import pickle
 import getopt
 from math import sqrt, log
 import sys
@@ -106,7 +105,6 @@ def read_data_file(input_file):
 
 
 def parse_content(content):
-    content = unicode(content, 'utf-8')
     return [normalise(word) for word in nltk.word_tokenize(content)]
 
 
@@ -149,7 +147,7 @@ def store_indexes(index, vector_lengths, bitriword_indexes,
     offset = 0
     with open(output_file_postings, "wb") as postings_file:
         for key, postings in index.items():
-            pickled = cPickle.dumps(postings, 2)
+            pickled = pickle.dumps(postings, pickle.HIGHEST_PROTOCOL)
             postings_file.write(pickled)
             length = len(pickled)
             dictionary[key] = (get_idf(num_documents, len(postings)), offset,
@@ -159,14 +157,15 @@ def store_indexes(index, vector_lengths, bitriword_indexes,
         dictionary["LENGTHS"] = vector_lengths
 
         for key, value in bitriword_indexes.items():
-            pickled = cPickle.dumps(value, 2)
+            pickled = pickle.dumps(value, pickle.HIGHEST_PROTOCOL)
             postings_file.write(pickled)
             length = len(pickled)
             bitriword_dictionary[key] = (len(value), offset, length)
             offset += length
 
     with open(output_file_dictionary, "wb") as dictionary_file:
-        cPickle.dump([dictionary, bitriword_dictionary], dictionary_file, 2)
+        pickle.dump([dictionary, bitriword_dictionary], dictionary_file,
+                    pickle.HIGHEST_PROTOCOL)
 
 
 def main():
