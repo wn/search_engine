@@ -1,3 +1,7 @@
+"""
+Creates an index for our SearchEngine
+"""
+
 from collections import defaultdict, Counter
 import pickle
 import getopt
@@ -71,7 +75,7 @@ def build_tfidf_index(data):
         doc_id: get_document_vector_length(token_count)
         for (doc_id, _), token_count in zip(data, all_token_count)
     }
-    for (doc_id, content), token_count in zip(data, all_token_count):
+    for (doc_id, _), token_count in zip(data, all_token_count):
         for token, count in token_count.items():
             index[token].append((doc_id, count))
 
@@ -105,6 +109,9 @@ def read_data_file(input_file):
 
 
 def parse_content(content):
+    """
+    Parses the content by tokenising the content and normalising each word
+    """
     return [normalise(word) for word in nltk.word_tokenize(content)]
 
 
@@ -128,13 +135,12 @@ def get_idf(all_docs_length, val):
     return log((float(all_docs_length) / val), 10)
 
 
-def get_weighted_tf(count):
+def get_weighted_tf(count, base=10):
     """
     Calculates the weighted term frequency using the
     'logarithm' scheme.
     """
-    BASE = 10
-    return log(BASE * count, BASE)
+    return log(base * count, base)
 
 
 def store_indexes(index, vector_lengths, bitriword_indexes,
