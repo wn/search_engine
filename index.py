@@ -8,6 +8,7 @@ import getopt
 from math import sqrt, log
 import sys
 import csv
+import time
 
 import nltk
 from nltk.stem.porter import PorterStemmer
@@ -203,16 +204,33 @@ def main():
            [input_file, output_file_postings, output_file_dictionary]):
         usage()
         sys.exit(2)
+    cur_time = time.time()
     print("Building index")
+
     print("1. Retrieving data")
-    data = sorted(read_data_file(input_file))
-    print("2. Building tf-idf index")
+    data = read_data_file(input_file)
+    print("Time taken = " + str(time.time() - cur_time))
+
+    print("2. Sorting data")
+    cur_time = time.time()
+    data = sorted(data)
+    print("Time taken = " + str(time.time() - cur_time))
+
+    print("3. Building tf-idf index")
+    cur_time = time.time()
     index, vector_lengths, num_documents = build_tfidf_index(data)
-    print("3. Building Biword Triword index")
+    print("Time taken = " + str(time.time() - cur_time))
+
+    print("4. Building Biword Triword index")
+    cur_time = time.time()
     bitriword_index = build_bitriword_index(data)
-    print("4. Storing index")
+    print("Time taken = " + str(time.time() - cur_time))
+
+    print("5. Storing index")
+    cur_time = time.time()
     store_indexes(index, vector_lengths, bitriword_index,
                   output_file_dictionary, output_file_postings, num_documents)
+    print("Time taken = " + str(time.time() - cur_time))
 
 
 if __name__ == "__main__":
