@@ -204,7 +204,7 @@ def main():
            [input_file, output_file_postings, output_file_dictionary]):
         usage()
         sys.exit(2)
-    cur_time = time.time()
+    start_time = cur_time = time.time()
     print("Building index")
 
     print("1. Retrieving data")
@@ -231,6 +231,7 @@ def main():
     store_indexes(index, vector_lengths, bitriword_index,
                   output_file_dictionary, output_file_postings, num_documents)
     print("Time taken = " + str(time.time() - cur_time))
+    print("Total time = " + str(time.time() - start_time))
 
 
 if __name__ == "__main__":
