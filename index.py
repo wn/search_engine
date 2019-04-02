@@ -107,16 +107,15 @@ def read_data_file(input_file):
     with open(input_file) as csv_file:
         reader = csv.reader(csv_file, delimiter=",")
         return Parallel(
-            n_jobs=-1, verbose=10)(
-                delayed(lambda row: (row[0], parse_content(row[2])))(row)
-                for row in reader)
+            n_jobs=-1, verbose=10, backend="multiprocessing")(
+                delayed(parse_row)(row) for row in reader)
 
 
-def parse_content(content):
+def parse_row(row):
     """
     Parses the content by tokenising the content and normalising each word
     """
-    return [normalise(word) for word in nltk.word_tokenize(content)]
+    return (row[0], [normalise(word) for word in nltk.word_tokenize(row[2])])
 
 
 def normalise(word, cache={}):
