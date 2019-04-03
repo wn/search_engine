@@ -8,7 +8,7 @@ from math import sqrt, trunc
 SKIP_INTERVAL_THRESHOLD = 3
 
 
-class Node(object):
+class Node:
     """
     Represents a node in the linked list.
     You can access the value through attribute `value`,
@@ -39,7 +39,7 @@ class Node(object):
         return self._linked_list._get_skip(self._index)
 
 
-class LinkedList(object):
+class LinkedList:
     """
     A linked list implementation with skip pointers,
     backed by python's list for performance.
@@ -52,8 +52,8 @@ class LinkedList(object):
         return len(self._data)
 
     def __iter__(self):
-        for x in self._data:
-            yield x[0]
+        for value, _ in self._data:
+            yield value
 
     def append(self, value):
         """
@@ -62,6 +62,9 @@ class LinkedList(object):
         self._data.append([value, None])
 
     def extend(self, values):
+        """
+        Extends the linked list by appending all the items from the iterable.
+        """
         self._data.extend([value, None] for value in values)
 
     def get_head(self):
@@ -87,7 +90,7 @@ class LinkedList(object):
         if interval < SKIP_INTERVAL_THRESHOLD:
             return
         prev = 0
-        for i in xrange(interval, total_skips * interval + 1, interval):
+        for i in range(interval, total_skips * interval + 1, interval):
             self._data[prev][1] = i
             prev = i
 

@@ -1,10 +1,14 @@
-from __future__ import print_function
+"""
+Creates an index for our SearchEngine
+"""
+
 from collections import defaultdict, Counter
-import cPickle
+import pickle
 import getopt
 from math import sqrt, log
 import sys
 import csv
+import time
 
 import nltk
 from nltk.stem.porter import PorterStemmer
@@ -73,7 +77,7 @@ def build_tfidf_index(data):
         doc_id: get_document_vector_length(token_count)
         for (doc_id, _), token_count in zip(data, all_token_count)
     }
-    for (doc_id, content), token_count in zip(data, all_token_count):
+    for (doc_id, _), token_count in zip(data, all_token_count):
         for token, count in token_count.items():
             index[token].append((doc_id, count))
 
@@ -104,14 +108,15 @@ def read_data_file(input_file):
     with open(input_file) as csv_file:
         reader = csv.reader(csv_file, delimiter=",")
         return Parallel(
-            n_jobs=-1, backend="multiprocessing", verbose=10)(
-                delayed(lambda row: (row[0], parse_content(row[2])))(row)
-                for row in reader)
+            n_jobs=-1, verbose=10, backend="multiprocessing")(
+                delayed(parse_row)(row) for row in reader)
 
 
-def parse_content(content):
-    content = unicode(content, 'utf-8')
-    return [normalise(word) for word in nltk.word_tokenize(content)]
+def parse_row(row):
+    """
+    Parses the content by tokenising the content and normalising each word
+    """
+    return (row[0], [normalise(word) for word in nltk.word_tokenize(row[2])])
 
 
 def normalise(word, cache={}):
@@ -134,13 +139,12 @@ def get_idf(all_docs_length, val):
     return log((float(all_docs_length) / val), 10)
 
 
-def get_weighted_tf(count):
+def get_weighted_tf(count, base=10):
     """
     Calculates the weighted term frequency using the
     'logarithm' scheme.
     """
-    BASE = 10
-    return log(BASE * count, BASE)
+    return log(base * count, base)
 
 
 def store_indexes(index, vector_lengths, bitriword_indexes,
@@ -153,7 +157,7 @@ def store_indexes(index, vector_lengths, bitriword_indexes,
     offset = 0
     with open(output_file_postings, "wb") as postings_file:
         for key, postings in index.items():
-            pickled = cPickle.dumps(postings, 2)
+            pickled = pickle.dumps(postings, pickle.HIGHEST_PROTOCOL)
             postings_file.write(pickled)
             length = len(pickled)
             dictionary[key] = (get_idf(num_documents, len(postings)), offset,
@@ -163,14 +167,15 @@ def store_indexes(index, vector_lengths, bitriword_indexes,
         dictionary["LENGTHS"] = vector_lengths
 
         for key, value in bitriword_indexes.items():
-            pickled = cPickle.dumps(value, 2)
+            pickled = pickle.dumps(value, pickle.HIGHEST_PROTOCOL)
             postings_file.write(pickled)
             length = len(pickled)
             bitriword_dictionary[key] = (len(value), offset, length)
             offset += length
 
     with open(output_file_dictionary, "wb") as dictionary_file:
-        cPickle.dump([dictionary, bitriword_dictionary], dictionary_file, 2)
+        pickle.dump([dictionary, bitriword_dictionary], dictionary_file,
+                    pickle.HIGHEST_PROTOCOL)
 
 
 def main():
@@ -199,16 +204,34 @@ def main():
            [input_file, output_file_postings, output_file_dictionary]):
         usage()
         sys.exit(2)
+    start_time = cur_time = time.time()
     print("Building index")
+
     print("1. Retrieving data")
-    data = sorted(read_data_file(input_file))
-    print("2. Building tf-idf index")
+    data = read_data_file(input_file)
+    print("Time taken = " + str(time.time() - cur_time))
+
+    print("2. Sorting data")
+    cur_time = time.time()
+    data = sorted(data)
+    print("Time taken = " + str(time.time() - cur_time))
+
+    print("3. Building tf-idf index")
+    cur_time = time.time()
     index, vector_lengths, num_documents = build_tfidf_index(data)
-    print("3. Building Biword Triword index")
+    print("Time taken = " + str(time.time() - cur_time))
+
+    print("4. Building Biword Triword index")
+    cur_time = time.time()
     bitriword_index = build_bitriword_index(data)
-    print("4. Storing index")
+    print("Time taken = " + str(time.time() - cur_time))
+
+    print("5. Storing index")
+    cur_time = time.time()
     store_indexes(index, vector_lengths, bitriword_index,
                   output_file_dictionary, output_file_postings, num_documents)
+    print("Time taken = " + str(time.time() - cur_time))
+    print("Total time = " + str(time.time() - start_time))
 
 
 if __name__ == "__main__":
