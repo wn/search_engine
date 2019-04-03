@@ -6,6 +6,7 @@ from collections import defaultdict, Counter
 import pickle
 import getopt
 from math import sqrt, log
+from functools import lru_cache
 import sys
 import csv
 import time
@@ -25,26 +26,43 @@ def usage():
           " -i directory-of-documents -d dictionary-file -p postings-file")
 
 
-def build_bitriword_index(data):
-    """
-    Builds an inverted index out of the files in the input_file.
-    A compound index with both biword indexes and triword tokens is built.
-    """
-    index = defaultdict(LinkedList)
-    print("Generating all biword/triword token sets")
-    all_bitriword_tokens = [
-        get_bitriword_tokens(content) for _, content in data
-    ]
-    index["ALL"].extend(doc_id for doc_id, _ in data)
-    print("Adding the tokens to the index")
-    for (doc_id, _), bitriword_tokens in zip(data, all_bitriword_tokens):
-        for token in bitriword_tokens:
-            # None is the second element appended as no relevant weights
-            index[token].append(doc_id)
-    print("Building skips...")
-    for postings in index.values():
-        postings.build_skips()
-    return index
+# def build_bitriword_index(data):
+#     """
+#     Builds an inverted index out of the files in the input_file.
+#     A compound index with both biword indexes and triword tokens is built.
+#     """
+#     index = defaultdict(LinkedList)
+#     print("Generating all biword/triword token sets")
+#     all_bitriword_tokens = [
+#         get_bitriword_tokens(content) for _, content in data
+#     ]
+#     index["ALL"].extend(doc_id for doc_id, _ in data)
+#     print("Adding the tokens to the index")
+#     for (doc_id, _), bitriword_tokens in zip(data, all_bitriword_tokens):
+#         for token in bitriword_tokens:
+#             # None is the second element appended as no relevant weights
+#             index[token].append(doc_id)
+#     print("Building skips...")
+#     for postings in index.values():
+#         postings.build_skips()
+#     return index
+
+# def get_bitriword_tokens(content):
+#     """
+#     Tokenise the text contained in the given filename to biword
+#     and triword tokens.
+#     """
+#     # Build biword
+#     biword_tokens = {
+#         " ".join(content[i:i + 2])
+#         for i in range(len(content) - 1)
+#     }
+#     # Build triword
+#     triword_tokens = {
+#         " ".join(content[i:i + 3])
+#         for i in range(len(content) - 2)
+#     }
+#     return biword_tokens.union(triword_tokens)
 
 
 def build_positional_index(data):
@@ -59,24 +77,6 @@ def build_positional_index(data):
         for token, positions in positions_index.items():
             index[token].append((doc_id, positions))
     return index
-
-
-def get_bitriword_tokens(content):
-    """
-    Tokenise the text contained in the given filename to biword
-    and triword tokens.
-    """
-    # Build biword
-    biword_tokens = {
-        " ".join(content[i:i + 2])
-        for i in range(len(content) - 1)
-    }
-    # Build triword
-    triword_tokens = {
-        " ".join(content[i:i + 3])
-        for i in range(len(content) - 2)
-    }
-    return biword_tokens.union(triword_tokens)
 
 
 def build_tfidf_index(data):
@@ -133,16 +133,13 @@ def parse_row(row):
     return (row[0], [normalise(word) for word in nltk.word_tokenize(row[2])])
 
 
-def normalise(word, cache={}):
+@lru_cache(maxsize=None)
+def normalise(word):
     """
     Normalises the word using stemmer from NLTK.
     """
     word = word.lower()
-    if word in cache:
-        return cache[word]
-    result = PorterStemmer().stem(word)
-    cache[word] = result
-    return result
+    return PorterStemmer().stem(word)
 
 
 def get_idf(all_docs_length, val):
@@ -161,35 +158,46 @@ def get_weighted_tf(count, base=10):
     return log(base * count, base)
 
 
-def store_indexes(index, vector_lengths, bitriword_indexes,
-                  output_file_dictionary, output_file_postings, num_documents):
+def store_to_postings_file(index, positional_index, output_file_postings,
+                           num_documents):
     """
-    Stores the index into the given dictionary file and postings file.
+    Stores the postings in index and the positional index in positional_index
+    to postings file and generate a dictionary to access the postings file.
     """
     dictionary = {}
-    bitriword_dictionary = {}
-    offset = 0
     with open(output_file_postings, "wb") as postings_file:
-        for key, postings in index.items():
-            pickled = pickle.dumps(postings, pickle.HIGHEST_PROTOCOL)
-            postings_file.write(pickled)
-            length = len(pickled)
-            dictionary[key] = (get_idf(num_documents, len(postings)), offset,
-                               length)
-            offset += length
-        # Stores vector lengths as a nested dictionary in the dictionary
-        dictionary["LENGTHS"] = vector_lengths
+        tokens = set(index.keys()).union(set(positional_index.keys()))
+        for token in tokens:
+            postings = index[token]
+            postings_offset, postings_length = pickle_to_file(
+                postings_file, postings)
+            positional_offset, positional_length = pickle_to_file(
+                postings_file, positional_index[token])
+            dictionary[token] = (get_idf(num_documents, len(postings)),
+                                 (postings_offset, postings_length),
+                                 (positional_offset, positional_length))
+    return dictionary
 
-        for key, value in bitriword_indexes.items():
-            pickled = pickle.dumps(value, pickle.HIGHEST_PROTOCOL)
-            postings_file.write(pickled)
-            length = len(pickled)
-            bitriword_dictionary[key] = (len(value), offset, length)
-            offset += length
 
+def store_to_dictionary_file(dictionary, vector_lengths,
+                             output_file_dictionary):
+    """
+    Stores a tuple of dictionary and vector_lengths to the dictionary file.
+    """
     with open(output_file_dictionary, "wb") as dictionary_file:
-        pickle.dump([dictionary, bitriword_dictionary], dictionary_file,
+        pickle.dump((dictionary, vector_lengths), dictionary_file,
                     pickle.HIGHEST_PROTOCOL)
+
+
+def pickle_to_file(postings_file, linked_list):
+    """
+    Stores the given linked_list object to a file object postings_file
+    """
+    offset = postings_file.tell()
+    pickled = pickle.dumps(linked_list, pickle.HIGHEST_PROTOCOL)
+    length = len(pickled)
+    postings_file.write(pickled)
+    return (offset, length)
 
 
 def main():
@@ -235,16 +243,28 @@ def main():
     index, vector_lengths, num_documents = build_tfidf_index(data)
     print("Time taken = " + str(time.time() - cur_time))
 
-    print("4. Building Biword Triword index")
+    # print("4. Building Biword Triword index")
+    # cur_time = time.time()
+    # bitriword_index = build_bitriword_index(data)
+    # print("Time taken = " + str(time.time() - cur_time))
+
+    print("4. Building positional index")
     cur_time = time.time()
-    bitriword_index = build_bitriword_index(data)
+    positional_index = build_positional_index(data)
     print("Time taken = " + str(time.time() - cur_time))
 
-    print("5. Storing index")
+    print("5. Storing to postings file")
     cur_time = time.time()
-    store_indexes(index, vector_lengths, bitriword_index,
-                  output_file_dictionary, output_file_postings, num_documents)
+    dictionary = store_to_postings_file(index, positional_index,
+                                        output_file_postings, num_documents)
     print("Time taken = " + str(time.time() - cur_time))
+
+    print("6. Storing to dictionary file")
+    cur_time = time.time()
+    store_to_dictionary_file(dictionary, vector_lengths,
+                             output_file_dictionary)
+    print("Time taken = " + str(time.time() - cur_time))
+
     print("Total time = " + str(time.time() - start_time))
 
 
