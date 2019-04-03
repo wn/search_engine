@@ -47,6 +47,20 @@ def build_bitriword_index(data):
     return index
 
 
+def build_positional_index(data):
+    """
+    Builds a positional index out of the rows in the data.
+    """
+    index = defaultdict(LinkedList)
+    for doc_id, content in data:
+        positions_index = defaultdict(LinkedList)
+        for i, token in enumerate(content):
+            positions_index[token].append(i)
+        for token, positions in positions_index.items():
+            index[token].append((doc_id, positions))
+    return index
+
+
 def get_bitriword_tokens(content):
     """
     Tokenise the text contained in the given filename to biword
