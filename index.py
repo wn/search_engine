@@ -10,6 +10,7 @@ from functools import lru_cache
 import sys
 import csv
 import time
+import gc
 
 import nltk
 from nltk.stem.porter import PorterStemmer
@@ -269,4 +270,8 @@ def main():
 
 
 if __name__ == "__main__":
+    # In Python, memory management is mainly through refcount, GC is only
+    # used for cycle detection. As long as our data structures do not contain
+    # cycles, it is safe to disable the GC.
+    gc.disable()
     main()
