@@ -2,16 +2,14 @@
 Processes search queries
 """
 
+import csv
 import pickle
 import getopt
 import sys
-import heapq
-from collections import Counter
 from math import log
 from functools import lru_cache
 
 from nltk.stem.porter import PorterStemmer
-from nltk import word_tokenize
 
 from data_structures import LinkedList
 
@@ -28,15 +26,6 @@ def usage():
 #######################
 # Parsing and loading #
 #######################
-
-
-def parse(query):
-    """
-    Parses a query into a dictionary where key is the token and its value is
-    the term frequency
-    """
-    tokens = (normalise(token) for token in word_tokenize(query))
-    return Counter(tokens)
 
 
 def get_weighted_tf(count, base=10):
@@ -105,52 +94,66 @@ def load_dictionary(dictionary_file_location):
 ####################
 # Query processing #
 ####################
-def process_queries(dictionary, postings_file_location,
-                    file_of_queries_location, file_of_output_location):
+def process_query(dictionary, postings_file_location, file_of_queries_location,
+                  file_of_output_location):
     """
-    Process all the queries in the queries file.
+    Process the query in the query file.
     """
-    with open(file_of_queries_location, 'r') as queries, \
+    with open(file_of_queries_location, 'r') as query_file, \
             open(postings_file_location, 'rb') as postings_file, \
             open(file_of_output_location, 'w') as output_file:
-        for query in queries:
-            try:
-                process_query(query, dictionary, postings_file, output_file)
-            except Exception:
-                output_file.write("\n")
+        query, *relevant_doc_ids = list(query_file)
+        query_type, tokens = parse_query(query)
+        # if query_type == 'boolean':
+        # elif query_type == 'freetext':
 
 
-def process_query(query, dictionary, postings_file, output_file):
+def parse_query(query):
     """
-    Calculates the cosine scores of the documents, get 10 documents with the
-    highest scores and writes to file
-    """
-    scores = Counter()
-    lengths = dictionary["LENGTHS"]
-    weighted_tfs = get_weighted_tfs(parse(query))
-    for term, tf_q in list(weighted_tfs.items()):
-        if term not in dictionary:
-            continue
-        postings = load_postings(postings_file, dictionary, term)
-        idf = dictionary[term][0]
-        for doc, tf_d in postings:
-            scores[doc] += tf_d * tf_q * idf
-    for doc in list(scores.keys()):
-        scores[doc] = float(scores[doc]) / lengths[doc]
+    Parses query.
 
-    postings = " ".join(str(x) for x in retrieve_top_ten_scores(scores))
-    output_file.write(postings + "\n")
+    Clarification from Zhao Jin:
+    The queries could be in the form of A B C, A AND B AND C, "A B" AND C,
+    but not A B AND C.
+
+    Note that the query is actually a row in a CSV document with
+    space delimiter and double quote as the quote character.
+    """
+    tokens = list(csv.reader([query], delimiter=' ', quotechar='"'))[0]
+    if 'AND' in tokens:
+        return ('boolean',
+                [parse_token(token) for token in tokens if token != 'AND'])
+    else:
+        return ('freetext', [parse_token(token) for token in tokens])
 
 
-def retrieve_top_ten_scores(scores):
-    """
-    Retrieve the top 10 postings by score. This is done using the heapq.
-    The results are then sorted by decreasing score and then by increasing
-    lexicographical order of terms.
-    """
-    score_list = heapq.nlargest(10,
-                                list(scores.items()), lambda x: (x[1], -x[0]))
-    return (x[0] for x in score_list)
+def parse_token(token):
+    if ' ' in token:
+        return ('phrase', [normalise(word) for word in token.split()])
+    else:
+        return ('nonphrase', normalise(token))
+
+
+# def process_query(query, dictionary, postings_file, output_file):
+#     """
+#     Calculates the cosine scores of the documents, get 10 documents with the
+#     highest scores and writes to file
+#     """
+#    scores = Counter()
+#    lengths = dictionary["LENGTHS"]
+#    weighted_tfs = get_weighted_tfs(parse(query))
+#    for term, tf_q in list(weighted_tfs.items()):
+#        if term not in dictionary:
+#            continue
+#        postings = load_postings(postings_file, dictionary, term)
+#        idf = dictionary[term][0]
+#        for doc, tf_d in postings:
+#            scores[doc] += tf_d * tf_q * idf
+#    for doc in list(scores.keys()):
+#        scores[doc] = float(scores[doc]) / lengths[doc]
+#
+#    postings = " ".join(str(x) for x in retrieve_top_ten_scores(scores))
+#    output_file.write(postings + "\n")
 
 
 def main():
@@ -184,7 +187,7 @@ def main():
 
     dictionary = load_dictionary(dictionary_file)
 
-    process_queries(dictionary, postings_file, file_of_queries, file_of_output)
+    process_query(dictionary, postings_file, file_of_queries, file_of_output)
 
 
 if __name__ == "__main__":
