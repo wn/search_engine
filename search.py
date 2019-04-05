@@ -63,15 +63,31 @@ def normalise(token):
     return PorterStemmer().stem(token)
 
 
-def load_postings(postings_file, dictionary, term):
+def load_postings_list(postings_file, dictionary, token):
     """
-    Loads postings from postings file using memory
-    location provided by dictionary.
+    Loads postings list from postings file using the location provided
+    by the dictionary.
+
+    Returns an empty LinkedList if token is not in dictionary.
     """
-    # Returns an empty linkedlist if term is not in dictionary
-    if term not in dictionary:
+    if token not in dictionary:
         return LinkedList()
-    _, offset, length = dictionary[term]
+    _, (offset, length), _ = dictionary[token]
+    postings_file.seek(offset)
+    pickled = postings_file.read(length)
+    return pickle.loads(pickled)
+
+
+def load_positional_index(postings_file, dictionary, token):
+    """
+    Loads positional index from postings file using the location provided
+    by the dictionary.
+
+    Returns an empty LinkedList if token is not in dictionary.
+    """
+    if token not in dictionary:
+        return LinkedList()
+    _, _, (offset, length) = dictionary[token]
     postings_file.seek(offset)
     pickled = postings_file.read(length)
     return pickle.loads(pickled)
@@ -79,11 +95,11 @@ def load_postings(postings_file, dictionary, term):
 
 def load_dictionary(dictionary_file_location):
     """
-    Loads dictionary from dictionary file location
+    Loads dictionary from dictionary file location.
+    Returns a tuple of (dictionary, vector_lengths)
     """
-    with open(dictionary_file_location, 'r') as dictionary_file:
-        dictionary, bitriword_dictionary = pickle.load(dictionary_file)
-    return dictionary
+    with open(dictionary_file_location, 'rb') as dictionary_file:
+        return pickle.load(dictionary_file)
 
 
 ####################
