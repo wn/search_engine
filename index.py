@@ -11,6 +11,7 @@ import sys
 import csv
 import time
 import gc
+import os
 
 import nltk
 from nltk.stem.porter import PorterStemmer
@@ -267,6 +268,10 @@ def main():
     print("Time taken = " + str(time.time() - cur_time))
 
     print("Total time = " + str(time.time() - start_time))
+
+    # Commit suicide since all we need is already done.
+    # Why bother cleaning up if we're not doing anything afterwards.
+    os._exit(os.EX_OK)
 
 
 if __name__ == "__main__":
