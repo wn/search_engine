@@ -1,12 +1,15 @@
-#!/usr/bin/python
+"""
+Processes search queries
+"""
 
-from __future__ import print_function
-import cPickle
+import pickle
 import getopt
 import sys
 import heapq
 from collections import Counter
 from math import log
+from functools import lru_cache
+
 from nltk.stem.porter import PorterStemmer
 from nltk import word_tokenize
 
@@ -36,35 +39,28 @@ def parse(query):
     return Counter(tokens)
 
 
-def get_weighted_tf(count):
+def get_weighted_tf(count, base=10):
     """
     Calculates the weighted term frequency
     using the 'logarithm' scheme.
     """
-    BASE = 10
-    return log(BASE * count, BASE)
+    return log(base * count, base)
 
 
 def get_weighted_tfs(counts):
     """
     Calculate the weighted term frequencies.
     """
-    return dict(
-        map(
-            lambda key, val: (key, get_weighted_tf(val),
-            counts.items())))
+    return {k: get_weighted_tf(v) for k, v in counts.items()}
 
 
-def normalise(token, cache={}):
+@lru_cache(maxsize=None)
+def normalise(token):
     """
     Returns a normalised token. Normalised tokens are cached for performance
     """
     token = token.lower()
-    if token in cache:
-        return cache[token]
-    result = PorterStemmer().stem(token)
-    cache[token] = result
-    return result
+    return PorterStemmer().stem(token)
 
 
 def load_postings(postings_file, dictionary, term):
@@ -78,7 +74,7 @@ def load_postings(postings_file, dictionary, term):
     _, offset, length = dictionary[term]
     postings_file.seek(offset)
     pickled = postings_file.read(length)
-    return cPickle.loads(pickled)
+    return pickle.loads(pickled)
 
 
 def load_dictionary(dictionary_file_location):
@@ -86,7 +82,7 @@ def load_dictionary(dictionary_file_location):
     Loads dictionary from dictionary file location
     """
     with open(dictionary_file_location, 'r') as dictionary_file:
-        dictionary, bitriword_dictionary = cPickle.load(dictionary_file)
+        dictionary, bitriword_dictionary = pickle.load(dictionary_file)
     return dictionary
 
 
@@ -104,7 +100,7 @@ def process_queries(dictionary, postings_file_location,
         for query in queries:
             try:
                 process_query(query, dictionary, postings_file, output_file)
-            except Exception as e:
+            except Exception:
                 output_file.write("\n")
 
 
@@ -116,14 +112,14 @@ def process_query(query, dictionary, postings_file, output_file):
     scores = Counter()
     lengths = dictionary["LENGTHS"]
     weighted_tfs = get_weighted_tfs(parse(query))
-    for term, tf_q in weighted_tfs.items():
+    for term, tf_q in list(weighted_tfs.items()):
         if term not in dictionary:
             continue
         postings = load_postings(postings_file, dictionary, term)
         idf = dictionary[term][0]
         for doc, tf_d in postings:
             scores[doc] += tf_d * tf_q * idf
-    for doc in scores.keys():
+    for doc in list(scores.keys()):
         scores[doc] = float(scores[doc]) / lengths[doc]
 
     postings = " ".join(str(x) for x in retrieve_top_ten_scores(scores))
@@ -136,7 +132,8 @@ def retrieve_top_ten_scores(scores):
     The results are then sorted by decreasing score and then by increasing
     lexicographical order of terms.
     """
-    score_list = heapq.nlargest(10, scores.items(), lambda x: (x[1], -x[0]))
+    score_list = heapq.nlargest(10,
+                                list(scores.items()), lambda x: (x[1], -x[0]))
     return (x[0] for x in score_list)
 
 
