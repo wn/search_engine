@@ -107,3 +107,10 @@ class LinkedList(Generic[T]):
         if skip is None:
             return None
         return Node(skip, self)
+class QueryType(Enum):
+    BOOLEAN = 'boolean'
+    FREE_TEXT = 'freetext'
+
+class TokenType(Enum):
+    PHRASE = 'phrase'
+    NON_PHRASE = 'nonphrase'

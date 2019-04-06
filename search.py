@@ -13,7 +13,8 @@ from typing import Dict, Tuple, BinaryIO, List, Union
 
 from nltk.stem.porter import PorterStemmer
 
-from data_structures import LinkedList
+from data_structures import LinkedList, TokenType, QueryType
+
 
 
 def usage() -> None:
@@ -116,12 +117,15 @@ def process_query(
             open(file_of_output_location, 'w') as output_file:
         query, *relevant_doc_ids = list(query_file)
         query_type, tokens = parse_query(query)
-        # if query_type == 'boolean':
-        # elif query_type == 'freetext':
+        if query_type is Query.BOOLEAN:
+            return LinkedList()
+        elif query_type is Query.FREE_TEXT:
+            return LinkedList()
+
 
 
 def parse_query(
-        query: str) -> Tuple[str, List[Tuple[str, Union[List[str], str]]]]:
+        query: str) -> Tuple[QueryType, List[Tuple[str, Union[List[str], str]]]]:
     """
     Parses query.
 
@@ -132,19 +136,20 @@ def parse_query(
     Note that the query is actually a row in a CSV document with
     space delimiter and double quote as the quote character.
     """
+    import pdb;pdb.set_trace()
     tokens = list(csv.reader([query], delimiter=' ', quotechar='"'))[0]
     if 'AND' in tokens:
-        return ('boolean',
+        return (QueryType.BOOLEAN
                 [parse_token(token) for token in tokens if token != 'AND'])
     else:
-        return ('freetext', [parse_token(token) for token in tokens])
+        return (QueryType.FREE_TEXT, [parse_token(token) for token in tokens])
 
 
-def parse_token(token: str) -> Tuple[str, Union[str, List[str]]]:
+def parse_token(token: str) -> Tuple[TokenType, Union[str, List[str]]]:
     if ' ' in token:
-        return ('phrase', [normalise(word) for word in token.split()])
+        return (TokenType.PHRASE, [normalise(word) for word in token.split()])
     else:
-        return ('nonphrase', normalise(token))
+        return (TokenType.NON_PHRASE, normalise(token))
 
 
 # def process_query(query, dictionary, postings_file, output_file):
