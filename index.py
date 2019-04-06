@@ -13,6 +13,8 @@ import time
 import gc
 import os
 
+from typing import Dict, List, Tuple, Any, BinaryIO
+
 import nltk
 from nltk.stem.porter import PorterStemmer
 from joblib import Parallel, delayed
@@ -20,7 +22,7 @@ from joblib import Parallel, delayed
 from data_structures import LinkedList
 
 
-def usage():
+def usage() -> None:
     """
     Prints the usage message.
     """
@@ -67,13 +69,16 @@ def usage():
 #     return biword_tokens.union(triword_tokens)
 
 
-def build_positional_index(data):
+def build_positional_index(
+        data: List[Tuple[str, List[str]]]
+) -> Dict[str, LinkedList[Tuple[str, LinkedList[int]]]]:
     """
     Builds a positional index out of the rows in the data.
     """
-    index = defaultdict(LinkedList)
+    index: Dict[str, LinkedList[Tuple[str, LinkedList[int]]]] = defaultdict(
+        LinkedList)
     for doc_id, content in data:
-        positions_index = defaultdict(LinkedList)
+        positions_index: Dict[str, LinkedList[int]] = defaultdict(LinkedList)
         for i, token in enumerate(content):
             positions_index[token].append(i)
         for token, positions in positions_index.items():
@@ -81,12 +86,13 @@ def build_positional_index(data):
     return index
 
 
-def build_tfidf_index(data):
+def build_tfidf_index(
+        data: List[Tuple[str, List[str]]]
+) -> Tuple[Dict[str, LinkedList[Tuple[str, float]]], Dict[str, float], int]:
     """
     Builds both a tf-idf index from the data.
     """
-    index = defaultdict(LinkedList)
-    doc_vector_lengths = {}
+    index: Dict[str, LinkedList[Tuple[str, float]]] = defaultdict(LinkedList)
     all_docs_length = len(data)
     all_token_count = [get_token_weights(content) for _, content in data]
     doc_vector_lengths = {
@@ -100,7 +106,7 @@ def build_tfidf_index(data):
     return index, doc_vector_lengths, all_docs_length
 
 
-def get_token_weights(content):
+def get_token_weights(content: List[str]) -> Dict[str, float]:
     """
     Tokenise the text contained in the given filename.
     """
@@ -108,7 +114,7 @@ def get_token_weights(content):
     return {k: get_weighted_tf(v) for k, v in token_count.items()}
 
 
-def get_document_vector_length(token_count):
+def get_document_vector_length(token_count: Dict[str, float]) -> float:
     """
     Calculates the vector normalisation factor
     using the 'cosine normalization' scheme.
@@ -116,7 +122,7 @@ def get_document_vector_length(token_count):
     return sqrt(sum(val**2 for val in token_count.values()))
 
 
-def read_data_file(input_file):
+def read_data_file(input_file: str) -> List[Tuple[str, List[str]]]:
     """
     Return a list of data sorted by the file name
     """
@@ -128,7 +134,7 @@ def read_data_file(input_file):
                 delayed(parse_row)(row) for row in reader)
 
 
-def parse_row(row):
+def parse_row(row: List[str]) -> Tuple[str, List[str]]:
     """
     Parses the content by tokenising the content and normalising each word
     """
@@ -136,7 +142,7 @@ def parse_row(row):
 
 
 @lru_cache(maxsize=None)
-def normalise(word):
+def normalise(word: str) -> str:
     """
     Normalises the word using stemmer from NLTK.
     """
@@ -144,7 +150,7 @@ def normalise(word):
     return PorterStemmer().stem(word)
 
 
-def get_idf(all_docs_length, val):
+def get_idf(all_docs_length: int, val: int) -> float:
     """
     Calculates the inverse document frequency using
     the 'inverse collection frequency' scheme.
@@ -152,7 +158,7 @@ def get_idf(all_docs_length, val):
     return log((float(all_docs_length) / val), 10)
 
 
-def get_weighted_tf(count, base=10):
+def get_weighted_tf(count: int, base: int = 10) -> float:
     """
     Calculates the weighted term frequency using the
     'logarithm' scheme.
@@ -160,8 +166,11 @@ def get_weighted_tf(count, base=10):
     return log(base * count, base)
 
 
-def store_to_postings_file(index, positional_index, output_file_postings,
-                           num_documents):
+def store_to_postings_file(
+        index: Dict[str, LinkedList[Tuple[str, float]]],
+        positional_index: Dict[str, LinkedList[Tuple[str, LinkedList[int]]]],
+        output_file_postings: str, num_documents: int
+) -> Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]]:
     """
     Stores the postings in index and the positional index in positional_index
     to postings file and generate a dictionary to access the postings file.
@@ -181,8 +190,9 @@ def store_to_postings_file(index, positional_index, output_file_postings,
     return dictionary
 
 
-def store_to_dictionary_file(dictionary, vector_lengths,
-                             output_file_dictionary):
+def store_to_dictionary_file(
+        dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
+        vector_lengths: Dict[str, float], output_file_dictionary: str) -> None:
     """
     Stores a tuple of dictionary and vector_lengths to the dictionary file.
     """
@@ -191,7 +201,8 @@ def store_to_dictionary_file(dictionary, vector_lengths,
                     pickle.HIGHEST_PROTOCOL)
 
 
-def pickle_to_file(postings_file, linked_list):
+def pickle_to_file(postings_file: BinaryIO,
+                   linked_list: LinkedList[Any]) -> Tuple[int, int]:
     """
     Stores the given linked_list object to a file object postings_file
     """
@@ -202,7 +213,7 @@ def pickle_to_file(postings_file, linked_list):
     return (offset, length)
 
 
-def main():
+def main() -> None:
     """
     The main function of this file.
     """
