@@ -53,6 +53,10 @@ class LinkedList(Generic[T]):
     def __len__(self) -> int:
         return len(self._data)
 
+    def __bool__(self) -> bool:
+        return self.__len__() > 0
+
+
     def __iter__(self) -> Iterable[T]:
         for value, _ in self._data:
             yield value
