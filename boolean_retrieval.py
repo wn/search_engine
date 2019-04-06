@@ -42,6 +42,7 @@ def perform_boolean_query(query_pairs: List[Tuple[str, str]],
     :param postings_file the file descriptor for the postings list file.
     :return: A LinkedList of document IDs.
     """
+
     def get_postings_list_length(query_pair: Tuple[str, str]) -> int:
         """Helper function to get a postings list length of a phrase/term."""
         term_type, phrase = query_pair
@@ -68,7 +69,8 @@ def perform_boolean_query(query_pairs: List[Tuple[str, str]],
     list.sort(query_pairs, key=get_postings_list_length)
 
     # Generate a list of Postings lists
-    postings_lists: Iterable[LinkedList] = starmap(get_postings_list, query_pairs)
+    postings_lists: Iterable[LinkedList] = starmap(get_postings_list,
+                                                   query_pairs)
 
     # Return the AND of all the Postings lists
     return reduce(perform_and, postings_lists)

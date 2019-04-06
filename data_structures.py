@@ -56,7 +56,6 @@ class LinkedList(Generic[T]):
     def __bool__(self) -> bool:
         return self.__len__() > 0
 
-
     def __iter__(self) -> Iterable[T]:
         for value, _ in self._data:
             yield value
@@ -111,9 +110,12 @@ class LinkedList(Generic[T]):
         if skip is None:
             return None
         return Node(skip, self)
+
+
 class QueryType(Enum):
     BOOLEAN = 'boolean'
     FREE_TEXT = 'freetext'
+
 
 class TokenType(Enum):
     PHRASE = 'phrase'
