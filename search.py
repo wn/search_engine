@@ -203,7 +203,7 @@ def main() -> None:
         usage()
         sys.exit(2)
 
-    tfidf_dictionary, bitriword_dictionary = load_dictionary(dictionary_file)
+    dictionary, vector_lengths = load_dictionary(dictionary_file)
 
     process_query(dictionary, postings_file, file_of_queries, file_of_output)
 
