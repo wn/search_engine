@@ -2,14 +2,9 @@ from typing import Tuple, List, Dict, IO, Iterable
 from enum import Enum
 import pickle
 from functools import reduce
-from .data_structures import LinkedList
+from data_structures import LinkedList, TokenType
 from itertools import starmap
 from operator import neg
-
-
-class QueryType(Enum):
-    PHRASE = 'phrase'
-    NON_PHRASE = 'nonphrase'
 
 
 def perform_and(operand_a: LinkedList, operand_b: LinkedList) -> LinkedList:
@@ -52,9 +47,9 @@ def perform_boolean_query(query_pairs: List[Tuple[str, str]],
         term_type, phrase = query_pair
         if phrase not in bitriword_dictionary and phrase not in tfidf_dictionary:
             return 0
-        elif term_type == QueryType.PHRASE:
+        elif term_type == TokenType.PHRASE:
             return bitriword_dictionary[phrase][0]
-        elif term_type == QueryType.NON_PHRASE:
+        elif term_type == TokenType.NON_PHRASE:
             return tfidf_dictionary[phrase][0][1]
 
     def get_postings_list(term_type: str, phrase: str) -> LinkedList:
@@ -62,9 +57,9 @@ def perform_boolean_query(query_pairs: List[Tuple[str, str]],
         Returns empty LinkedList if phrase does not exist."""
         if phrase not in bitriword_dictionary and phrase not in tfidf_dictionary:
             return LinkedList()
-        elif term_type == QueryType.PHRASE:
+        elif term_type == TokenType.PHRASE:
             _, offset, length = bitriword_dictionary[phrase]
-        elif term_type == QueryType.NON_PHRASE:
+        elif term_type == TokenType.NON_PHRASE:
             _, offset, length = tfidf_dictionary[phrase]
         postings_file.seek(offset)
         return pickle.loads(postings_file.read(length))
@@ -77,5 +72,3 @@ def perform_boolean_query(query_pairs: List[Tuple[str, str]],
 
     # Return the AND of all the Postings lists
     return reduce(perform_and, postings_lists)
-
-
