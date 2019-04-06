@@ -1,14 +1,15 @@
-#!/usr/bin/python
+"""
+Processes search queries
+"""
 
-from __future__ import print_function
-import cPickle
+import csv
+import pickle
 import getopt
 import sys
-import heapq
-from collections import Counter
 from math import log
+from functools import lru_cache
+
 from nltk.stem.porter import PorterStemmer
-from nltk import word_tokenize
 
 from data_structures import LinkedList
 
@@ -27,117 +28,132 @@ def usage():
 #######################
 
 
-def parse(query):
-    """
-    Parses a query into a dictionary where key is the token and its value is
-    the term frequency
-    """
-    tokens = (normalise(token) for token in word_tokenize(query))
-    return Counter(tokens)
-
-
-def get_weighted_tf(count):
+def get_weighted_tf(count, base=10):
     """
     Calculates the weighted term frequency
     using the 'logarithm' scheme.
     """
-    BASE = 10
-    return log(BASE * count, BASE)
+    return log(base * count, base)
 
 
 def get_weighted_tfs(counts):
     """
     Calculate the weighted term frequencies.
     """
-    return dict(
-        map(
-            lambda key, val: (key, get_weighted_tf(val),
-            counts.items())))
+    return {k: get_weighted_tf(v) for k, v in counts.items()}
 
 
-def normalise(token, cache={}):
+@lru_cache(maxsize=None)
+def normalise(token):
     """
     Returns a normalised token. Normalised tokens are cached for performance
     """
     token = token.lower()
-    if token in cache:
-        return cache[token]
-    result = PorterStemmer().stem(token)
-    cache[token] = result
-    return result
+    return PorterStemmer().stem(token)
 
 
-def load_postings(postings_file, dictionary, term):
+def load_postings_list(postings_file, dictionary, token):
     """
-    Loads postings from postings file using memory
-    location provided by dictionary.
+    Loads postings list from postings file using the location provided
+    by the dictionary.
+
+    Returns an empty LinkedList if token is not in dictionary.
     """
-    # Returns an empty linkedlist if term is not in dictionary
-    if term not in dictionary:
+    if token not in dictionary:
         return LinkedList()
-    _, offset, length = dictionary[term]
+    _, (offset, length), _ = dictionary[token]
     postings_file.seek(offset)
     pickled = postings_file.read(length)
-    return cPickle.loads(pickled)
+    return pickle.loads(pickled)
+
+
+def load_positional_index(postings_file, dictionary, token):
+    """
+    Loads positional index from postings file using the location provided
+    by the dictionary.
+
+    Returns an empty LinkedList if token is not in dictionary.
+    """
+    if token not in dictionary:
+        return LinkedList()
+    _, _, (offset, length) = dictionary[token]
+    postings_file.seek(offset)
+    pickled = postings_file.read(length)
+    return pickle.loads(pickled)
 
 
 def load_dictionary(dictionary_file_location):
     """
-    Loads dictionary from dictionary file location
+    Loads dictionary from dictionary file location.
+    Returns a tuple of (dictionary, vector_lengths)
     """
-    with open(dictionary_file_location, 'r') as dictionary_file:
-        dictionary, bitriword_dictionary = cPickle.load(dictionary_file)
-    return dictionary, bitriword_dictionary
+    with open(dictionary_file_location, 'rb') as dictionary_file:
+        return pickle.load(dictionary_file)
 
 
 ####################
 # Query processing #
 ####################
-def process_queries(tfidf_dictionary, bitriword_dictionary, postings_file_location,
-                    file_of_queries_location, file_of_output_location):
+def process_query(dictionary, postings_file_location, file_of_queries_location,
+                  file_of_output_location):
     """
-    Process all the queries in the queries file.
+    Process the query in the query file.
     """
-    with open(file_of_queries_location, 'r') as queries, \
+    with open(file_of_queries_location, 'r') as query_file, \
             open(postings_file_location, 'rb') as postings_file, \
             open(file_of_output_location, 'w') as output_file:
-        for query in queries:
-            try:
-                process_query(query, tfidf_dictionary, bitriword_dictionary, postings_file, output_file)
-            except Exception as e:
-                output_file.write("\n")
+        query, *relevant_doc_ids = list(query_file)
+        query_type, tokens = parse_query(query)
+        # if query_type == 'boolean':
+        # elif query_type == 'freetext':
 
 
-def process_query(query, tfidf_dictionary, bitriword_dictionary, postings_file, output_file):
+def parse_query(query):
     """
-    Calculates the cosine scores of the documents, get 10 documents with the
-    highest scores and writes to file
-    """
-    scores = Counter()
-    lengths = tfidf_dictionary["LENGTHS"]
-    weighted_tfs = get_weighted_tfs(parse(query))
-    for term, tf_q in weighted_tfs.items():
-        if term not in tfidf_dictionary:
-            continue
-        postings = load_postings(postings_file, tfidf_dictionary, term)
-        idf = tfidf_dictionary[term][0]
-        for doc, tf_d in postings:
-            scores[doc] += tf_d * tf_q * idf
-    for doc in scores.keys():
-        scores[doc] = float(scores[doc]) / lengths[doc]
+    Parses query.
 
-    postings = " ".join(str(x) for x in retrieve_top_ten_scores(scores))
-    output_file.write(postings + "\n")
+    Clarification from Zhao Jin:
+    The queries could be in the form of A B C, A AND B AND C, "A B" AND C,
+    but not A B AND C.
+
+    Note that the query is actually a row in a CSV document with
+    space delimiter and double quote as the quote character.
+    """
+    tokens = list(csv.reader([query], delimiter=' ', quotechar='"'))[0]
+    if 'AND' in tokens:
+        return ('boolean',
+                [parse_token(token) for token in tokens if token != 'AND'])
+    else:
+        return ('freetext', [parse_token(token) for token in tokens])
 
 
-def retrieve_top_ten_scores(scores):
-    """
-    Retrieve the top 10 postings by score. This is done using the heapq.
-    The results are then sorted by decreasing score and then by increasing
-    lexicographical order of terms.
-    """
-    score_list = heapq.nlargest(10, scores.items(), lambda x: (x[1], -x[0]))
-    return (x[0] for x in score_list)
+def parse_token(token):
+    if ' ' in token:
+        return ('phrase', [normalise(word) for word in token.split()])
+    else:
+        return ('nonphrase', normalise(token))
+
+
+# def process_query(query, dictionary, postings_file, output_file):
+#     """
+#     Calculates the cosine scores of the documents, get 10 documents with the
+#     highest scores and writes to file
+#     """
+#    scores = Counter()
+#    lengths = dictionary["LENGTHS"]
+#    weighted_tfs = get_weighted_tfs(parse(query))
+#    for term, tf_q in list(weighted_tfs.items()):
+#        if term not in dictionary:
+#            continue
+#        postings = load_postings(postings_file, dictionary, term)
+#        idf = dictionary[term][0]
+#        for doc, tf_d in postings:
+#            scores[doc] += tf_d * tf_q * idf
+#    for doc in list(scores.keys()):
+#        scores[doc] = float(scores[doc]) / lengths[doc]
+#
+#    postings = " ".join(str(x) for x in retrieve_top_ten_scores(scores))
+#    output_file.write(postings + "\n")
 
 
 def main():
@@ -171,7 +187,7 @@ def main():
 
     tfidf_dictionary, bitriword_dictionary = load_dictionary(dictionary_file)
 
-    process_queries(tfidf_dictionary, bitriword_dictionary, postings_file, file_of_queries, file_of_output)
+    process_query(dictionary, postings_file, file_of_queries, file_of_output)
 
 
 if __name__ == "__main__":
