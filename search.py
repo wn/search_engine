@@ -9,12 +9,14 @@ import sys
 from math import log
 from functools import lru_cache
 
+from typing import Dict, Tuple, BinaryIO, List, Union
+
 from nltk.stem.porter import PorterStemmer
 
 from data_structures import LinkedList
 
 
-def usage():
+def usage() -> None:
     """
     Prints the usage message.
     """
@@ -28,7 +30,7 @@ def usage():
 #######################
 
 
-def get_weighted_tf(count, base=10):
+def get_weighted_tf(count: int, base: int = 10) -> float:
     """
     Calculates the weighted term frequency
     using the 'logarithm' scheme.
@@ -36,7 +38,7 @@ def get_weighted_tf(count, base=10):
     return log(base * count, base)
 
 
-def get_weighted_tfs(counts):
+def get_weighted_tfs(counts: Dict[str, int]) -> Dict[str, float]:
     """
     Calculate the weighted term frequencies.
     """
@@ -44,7 +46,7 @@ def get_weighted_tfs(counts):
 
 
 @lru_cache(maxsize=None)
-def normalise(token):
+def normalise(token: str) -> str:
     """
     Returns a normalised token. Normalised tokens are cached for performance
     """
@@ -52,7 +54,10 @@ def normalise(token):
     return PorterStemmer().stem(token)
 
 
-def load_postings_list(postings_file, dictionary, token):
+def load_postings_list(
+        postings_file: BinaryIO,
+        dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
+        token: str) -> LinkedList[Tuple[str, float]]:
     """
     Loads postings list from postings file using the location provided
     by the dictionary.
@@ -67,7 +72,10 @@ def load_postings_list(postings_file, dictionary, token):
     return pickle.loads(pickled)
 
 
-def load_positional_index(postings_file, dictionary, token):
+def load_positional_index(
+        postings_file: BinaryIO,
+        dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
+        token: str) -> LinkedList[Tuple[str, LinkedList[int]]]:
     """
     Loads positional index from postings file using the location provided
     by the dictionary.
@@ -82,7 +90,9 @@ def load_positional_index(postings_file, dictionary, token):
     return pickle.loads(pickled)
 
 
-def load_dictionary(dictionary_file_location):
+def load_dictionary(
+        dictionary_file_location: str
+) -> Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]]:
     """
     Loads dictionary from dictionary file location.
     Returns a tuple of (dictionary, vector_lengths)
@@ -94,8 +104,10 @@ def load_dictionary(dictionary_file_location):
 ####################
 # Query processing #
 ####################
-def process_query(dictionary, postings_file_location, file_of_queries_location,
-                  file_of_output_location):
+def process_query(
+        dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
+        postings_file_location: str, file_of_queries_location: str,
+        file_of_output_location: str) -> None:
     """
     Process the query in the query file.
     """
@@ -108,7 +120,8 @@ def process_query(dictionary, postings_file_location, file_of_queries_location,
         # elif query_type == 'freetext':
 
 
-def parse_query(query):
+def parse_query(
+        query: str) -> Tuple[str, List[Tuple[str, Union[List[str], str]]]]:
     """
     Parses query.
 
@@ -127,7 +140,7 @@ def parse_query(query):
         return ('freetext', [parse_token(token) for token in tokens])
 
 
-def parse_token(token):
+def parse_token(token: str) -> Tuple[str, Union[str, List[str]]]:
     if ' ' in token:
         return ('phrase', [normalise(word) for word in token.split()])
     else:
@@ -156,7 +169,7 @@ def parse_token(token):
 #    output_file.write(postings + "\n")
 
 
-def main():
+def main() -> None:
     """
     The main function of this file.
     """
