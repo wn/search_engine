@@ -217,7 +217,7 @@ def main() -> None:
     """
     The main function of this file.
     """
-    input_file = output_file_dictionary = output_file_postings = None
+    input_file = output_file_dictionary = output_file_postings = ""
 
     try:
         opts, _ = getopt.getopt(sys.argv[1:], 'i:d:p:')
@@ -235,7 +235,7 @@ def main() -> None:
         else:
             assert False, "unhandled option"
 
-    if any(x is None for x in
+    if any(x == "" for x in
            [input_file, output_file_postings, output_file_dictionary]):
         usage()
         sys.exit(2)

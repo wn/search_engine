@@ -173,7 +173,7 @@ def main() -> None:
     """
     The main function of this file.
     """
-    dictionary_file = postings_file = file_of_queries = file_of_output = None
+    dictionary_file = postings_file = file_of_queries = file_of_output = ""
 
     try:
         opts, _ = getopt.getopt(sys.argv[1:], 'd:p:q:o:')
@@ -193,7 +193,7 @@ def main() -> None:
         else:
             assert False, "unhandled option"
 
-    if any(x is None for x in
+    if any(x == "" for x in
            [dictionary_file, postings_file, file_of_queries, file_of_output]):
         usage()
         sys.exit(2)
