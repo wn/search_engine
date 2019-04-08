@@ -107,7 +107,7 @@ def load_dictionary(
 def process_query(
         dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
         postings_file_location: str, file_of_queries_location: str,
-        file_of_output_location: str) -> LinkedList[int]:
+        file_of_output_location: str) -> None:
     """
     Process the query in the query file.
     """
@@ -117,10 +117,11 @@ def process_query(
         query, *relevant_doc_ids = list(query_file)
         query_type, tokens = parse_query(query)
         if query_type is QueryType.BOOLEAN:
-            return LinkedList()
+            results = LinkedList()
         elif query_type is QueryType.FREE_TEXT:
-            return LinkedList()
-
+            results = LinkedList()
+        postings = " ".join(str(x) for x in results)
+        output_file.write(postings + "\n")
 
 def parse_query(
         query: str) -> Tuple[QueryType, List[Tuple[str, Union[List[str], str]]]]:
@@ -134,7 +135,7 @@ def parse_query(
     Note that the query is actually a row in a CSV document with
     space delimiter and double quote as the quote character.
     """
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     tokens = list(csv.reader([query], delimiter=' ', quotechar='"'))[0]
     if 'AND' in tokens:
         return (QueryType.BOOLEAN,
