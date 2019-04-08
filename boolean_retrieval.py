@@ -1,5 +1,4 @@
-from typing import Tuple, List, Dict, IO, Iterable
-from enum import Enum
+from typing import Tuple, List, Dict, BinaryIO, Iterable
 import pickle
 from functools import reduce
 from .data_structures import LinkedList, TokenType
@@ -28,18 +27,16 @@ def perform_and(operand_a: LinkedList[int], operand_b: LinkedList[int]) -> Linke
 
 
 def perform_boolean_query(query_pairs: List[Tuple[str, str]],
-                          tfidf_dictionary: Dict[str, Tuple],
-                          bitriword_dictionary: Dict[str, Tuple],
-                          postings_file: IO) -> LinkedList:
+                          dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
+                          postings_file: BinaryIO) -> LinkedList:
     """
     Returns a LinkedList of documents that satisfy a purely conjunctive boolean query.
 
     :param query_pairs: A Tuple containing a List of Tuples with the form (<'phrase' | 'nonphrase', <term>)
         where <term> is a query term/phrase.
-    :param tfidf_dictionary the TF-IDF dictionary
-    :param bitriword_dictionary the biword/triword dictionary
-    :param postings_file the file descriptor for the postings list file.
-    :return: A LinkedList of document IDs.
+    :param dictionary the combined TF-IDF and positional index dictionary
+    :param postings_file the read-only binary file descriptor for the postings list file.
+    :return: A LinkedList of document IDs that satisfy the boolean query.
     """
 
     def get_postings_list_length(query_pair: Tuple[str, str]) -> int:

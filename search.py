@@ -13,7 +13,7 @@ from typing import Dict, Tuple, BinaryIO, List, Union
 
 from nltk.stem.porter import PorterStemmer
 
-from data_structures import LinkedList, TokenType, QueryType
+from .data_structures import LinkedList, TokenType, QueryType
 
 
 

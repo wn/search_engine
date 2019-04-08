@@ -19,7 +19,7 @@ import nltk
 from nltk.stem.porter import PorterStemmer
 from joblib import Parallel, delayed
 
-from data_structures import LinkedList
+from .data_structures import LinkedList
 
 
 def usage() -> None:
