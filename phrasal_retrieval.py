@@ -1,26 +1,31 @@
+from typing import Dict, Tuple, List, BinaryIO
+from .data_structures import LinkedList
+from .search import load_positional_index
+
+
 def retrieve_phrase(
         dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
-        postings_file_location: str,
+        postings_file: BinaryIO,
         tokens: List[str]) -> LinkedList[Tuple[str, LinkedList[int]]]:
     """
     Returns a LinkedList of documents that contain a specific phrase.
 
     :param dictionary
-    :param postings file location
-    :tokens tokens in phrase
+    :param postings_file the read-only binary file descriptor
+    :param tokens tokens in phrase
     :return: A LinkedList of document IDs ().
     """
     if not tokens:
         return LinkedList()
 
-    result = load_positional_index(postings_file, dictionary, tokens[0])
+    positional_index = load_positional_index(postings_file, dictionary, tokens[0])
     for token in tokens[1:]:
-        next_positional_index = load_positional_index(positings_file,
+        next_positional_index = load_positional_index(postings_file,
                                                       dictionary, token)
-        result = merge_positional_indexes(positional_index,
+        positional_index = merge_positional_indexes(positional_index,
                                           next_positional_index)
 
-    return result
+    return positional_index
 
 
 def merge_positional_indexes(before: LinkedList[Tuple[str, LinkedList[int]]],
