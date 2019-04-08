@@ -1,8 +1,8 @@
-from typing import Tuple, List, Dict, BinaryIO, Iterable
-import pickle
-from functools import reduce
+from typing import Tuple, List, Dict, BinaryIO, Union, cast
+
 from .data_structures import LinkedList, TokenType
-from itertools import starmap
+from .phrasal_retrieval import retrieve_phrase
+from .search import load_postings_list
 
 
 def perform_and(operand_a: LinkedList[int], operand_b: LinkedList[int]) -> LinkedList:
@@ -26,47 +26,61 @@ def perform_and(operand_a: LinkedList[int], operand_b: LinkedList[int]) -> Linke
     return result
 
 
-def perform_boolean_query(query_pairs: List[Tuple[str, str]],
+def perform_boolean_query(tokens: List[Tuple[str, Union[List[str], str]]],
                           dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
                           postings_file: BinaryIO) -> LinkedList:
     """
     Returns a LinkedList of documents that satisfy a purely conjunctive boolean query.
 
-    :param query_pairs: A Tuple containing a List of Tuples with the form (<'phrase' | 'nonphrase', <term>)
-        where <term> is a query term/phrase.
+    :param tokens: A List containing Tuples with the form (<'phrase' | 'nonphrase', <term>)
+        where <term> is a query term/phrase -- phrases are Lists, single terms are strings.
     :param dictionary the combined TF-IDF and positional index dictionary
     :param postings_file the read-only binary file descriptor for the postings list file.
     :return: A LinkedList of document IDs that satisfy the boolean query.
     """
+    def get_idf(token: Tuple[str, Union[List[str], str]]) -> float:
+        """
+        Helper function to get the IDF of a phrase/term.
 
-    def get_postings_list_length(query_pair: Tuple[str, str]) -> int:
-        """Helper function to get a postings list length of a phrase/term."""
-        term_type, phrase = query_pair
-        if phrase not in bitriword_dictionary and phrase not in tfidf_dictionary:
-            return 0
-        elif term_type == TokenType.PHRASE:
-            return bitriword_dictionary[phrase][0]
+        The IDF of a phrase is estimated by summing up the IDF of the individual terms.
+        This works out as phrases usually produce small resultant postings lists,
+        and a phrase with rare terms (high IDF) will produce smaller postings lists than a phrase with common terms.
+        """
+        term_type, phrase = token
+        if term_type == TokenType.PHRASE:
+            phrase = cast(List[str], phrase)
+            # Returns the sum of the idfs of each term (first item in the dictionary tuple)
+            return sum(map(lambda term: dictionary[term][0] if term in dictionary else 0, phrase))
         elif term_type == TokenType.NON_PHRASE:
-            return tfidf_dictionary[phrase][0][1]
+            term = cast(str, phrase)
+            return dictionary[term][0] if term in dictionary else 0
 
-    def get_postings_list(term_type: str, phrase: str) -> LinkedList:
-        """Helper function to get a postings list length of a phrase/term.
-        Returns empty LinkedList if phrase does not exist."""
-        if phrase not in bitriword_dictionary and phrase not in tfidf_dictionary:
-            return LinkedList()
-        elif term_type == TokenType.PHRASE:
-            _, offset, length = bitriword_dictionary[phrase]
+    def get_postings_list(term_type: str, phrase: Union[List[str], str]) -> LinkedList:
+        """
+        Helper function to get a postings list length of a phrase/term.
+        Returns empty LinkedList if phrase does not exist.
+        """
+        if term_type == TokenType.PHRASE:
+            return retrieve_phrase(dictionary, postings_file, phrase)
         elif term_type == TokenType.NON_PHRASE:
-            _, offset, length = tfidf_dictionary[phrase]
-        postings_file.seek(offset)
-        return pickle.loads(postings_file.read(length))
+            term = cast(str, phrase)
+            return load_postings_list(postings_file, dictionary, term)
 
-    # Optimization for faster AND computation -- do the smaller list first.
-    list.sort(query_pairs, key=get_postings_list_length)
+    # Guard against empty tokens list
+    if not tokens:
+        return LinkedList()
+
+    # Optimization for faster AND computation -- do the rarer term.
+    list.sort(tokens, key=get_idf, reverse=True)
 
     # Generate a list of Postings lists
-    postings_lists: Iterable[LinkedList] = starmap(get_postings_list,
-                                                   query_pairs)
+    resultant_list: LinkedList[int] = get_postings_list(*tokens[0])
 
-    # Return the AND of all the Postings lists
-    return reduce(perform_and, postings_lists)
+    # Successively use AND on the tokens' postings lists
+    for token in tokens[1:]:
+        # Short circuit for empty LinkedList -- cannot be done easily when using `reduce`
+        if len(resultant_list) == 0:
+            break
+        resultant_list = perform_and(resultant_list, get_postings_list(*token))
+
+    return resultant_list
