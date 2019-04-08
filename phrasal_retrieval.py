@@ -1,6 +1,6 @@
-from typing import Dict, Tuple, List, BinaryIO
-from .data_structures import LinkedList
-from .search import load_positional_index
+from typing import Dict, Tuple, List, BinaryIO, cast
+from .data_structures import LinkedList, Node
+from .search_helpers import load_positional_index
 
 
 def retrieve_phrase(
@@ -58,23 +58,24 @@ def merge_positional_indexes(before: LinkedList[Tuple[str, LinkedList[int]]],
 def merge_positions(before_positions: LinkedList[int],
                     after_positions: LinkedList[int]):
     result = LinkedList()
-    before_position, after_position = before_positions.get_head(
+    before, after = before_positions.get_head(
     ), after_positions.get_head()
 
-    while before_position is not None and after_position is not None:
-        if before_position.value == after_position.value - 1:
-            result.append(after_position.value)
-            before_position = before_position.next()
-            after_position = after.next()
-        elif before_position.value < after_position.value - 1:
-            if before_position.skip(
-            ) and before_position.skip().value <= after_position.value - 1:
-                before_position = before_position.skip()
+    while before is not None and after is not None:
+        before, after = cast(Node[int], before), cast(Node[int], after)  # typecasting
+        if before.value == after.value - 1:
+            result.append(after.value)
+            before = before.next()
+            after = after.next()
+        elif before.value < after.value - 1:
+            if before.skip(
+            ) and before.skip().value <= after.value - 1:
+                before = before.skip()
             else:
-                before_position = before_position.next()
-        elif after_position.skip(
-        ) and after.skip().value - 1 <= before_position.value:
-            after_position = after.skip()
+                before = before.next()
+        elif after.skip(
+        ) and after.skip().value - 1 <= before.value:
+            after = after.skip()
         else:
-            after_position = after.next()
+            after = after.next()
     return result
