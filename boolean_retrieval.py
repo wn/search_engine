@@ -2,12 +2,11 @@ from typing import Tuple, List, Dict, IO, Iterable
 from enum import Enum
 import pickle
 from functools import reduce
-from data_structures import LinkedList, TokenType
+from .data_structures import LinkedList, TokenType
 from itertools import starmap
-from operator import neg
 
 
-def perform_and(operand_a: LinkedList, operand_b: LinkedList) -> LinkedList:
+def perform_and(operand_a: LinkedList[int], operand_b: LinkedList[int]) -> LinkedList:
     """Returns all ids that are ids of operand a and operand b. Copied from HW2."""
     result = LinkedList()
     operand_a, operand_b = operand_a.get_head(), operand_b.get_head()
