@@ -5,11 +5,14 @@ Processes search queries
 import csv
 import getopt
 import sys
+from typing import Dict, Tuple, BinaryIO, List
+from functools import reduce
 
 from typing import Dict, Tuple, BinaryIO, List, Union
 
 
 from data_structures import LinkedList, TokenType, QueryType
+from ranked_retrieval import get_relevant_docs
 from boolean_retrieval import perform_boolean_query
 from search_helpers import *
 
@@ -29,6 +32,7 @@ def usage() -> None:
 
 def process_query(
         dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
+        vector_lengths: Dict[str, float],
         postings_file_location: str, file_of_queries_location: str,
         file_of_output_location: str) -> None:
     """
@@ -39,18 +43,27 @@ def process_query(
             open(file_of_output_location, 'w') as output_file:
         query, *relevant_doc_ids = list(query_file)
         query_type, tokens = parse_query(query)
-        # TODO use this logic after VSM is implemented
-        # if query_type is QueryType.BOOLEAN:
-        #     results = LinkedList()
-        # elif query_type is QueryType.FREE_TEXT:
-        #     results = LinkedList()
-        results = perform_boolean_query(tokens, dictionary, postings_file)
-        postings = " ".join(str(x) for x in map(lambda n: n[0], results))
+        relevant_doc_ids = [*map(lambda x: x.strip(), relevant_doc_ids)]
+        query_phrase = " ".join(reduce(lambda x, y: x + y, [*map(lambda x: x[1], tokens)]))
+        result = get_relevant_docs(query_phrase, dictionary, vector_lengths, relevant_doc_ids, postings_file)
+        if query_type is QueryType.BOOLEAN:
+            boolean_results = set(perform_boolean_query(tokens, dictionary, postings_file))
+            # Sort documents that satisfy boolean query to be the top results.
+            relevant_boolean = []
+            relevant_non_boolean = []
+            for doc_id, _ in result:
+                if doc_id in boolean_results:
+                    relevant_boolean.append(doc_id)
+                else:
+                    relevant_non_boolean.append(doc_id)
+            relevant_boolean.extend(relevant_non_boolean)
+            result = relevant_boolean
+        postings = str(result)
         output_file.write(postings + "\n")
 
 
 def parse_query(
-        query: str) -> Tuple[QueryType, List[Tuple[str, Union[List[str], str]]]]:
+        query: str) -> Tuple[QueryType, List[Tuple[TokenType, List[str]]]]:
     """
     Parses query.
 
@@ -67,14 +80,15 @@ def parse_query(
         return (QueryType.BOOLEAN,
                 [parse_token(token) for token in tokens if token != 'AND'])
     else:
-        return (QueryType.FREE_TEXT, [parse_token(token) for token in tokens])
+        return QueryType.FREE_TEXT, [parse_token(token) for token in tokens]
 
 
-def parse_token(token: str) -> Tuple[TokenType, Union[str, List[str]]]:
+def parse_token(token: str) -> Tuple[TokenType, List[str]]:
+    tokens = [normalise(word) for word in token.split()]
     if ' ' in token:
-        return (TokenType.PHRASE, [normalise(word) for word in token.split()])
+        return (TokenType.PHRASE, tokens)
     else:
-        return (TokenType.NON_PHRASE, normalise(token))
+        return (TokenType.NON_PHRASE, tokens)
 
 
 # def process_query(query, dictionary, postings_file, output_file):
@@ -128,9 +142,7 @@ def main() -> None:
         sys.exit(2)
 
     dictionary, document_vectors_dictionary, vector_lengths = load_dictionaries(dictionary_file)
-
-    process_query(dictionary, postings_file, file_of_queries, file_of_output)
-
+    process_query(dictionary, vector_lengths, postings_file, file_of_queries, file_of_output)
 
 if __name__ == "__main__":
     main()

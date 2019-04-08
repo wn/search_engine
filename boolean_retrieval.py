@@ -26,7 +26,7 @@ def perform_and(operand_a: LinkedList[int], operand_b: LinkedList[int]) -> Linke
     return result
 
 
-def perform_boolean_query(tokens: List[Tuple[str, Union[List[str], str]]],
+def perform_boolean_query(tokens: List[Tuple[str, List[str]]],
                           dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
                           postings_file: BinaryIO) -> LinkedList:
     """
@@ -38,7 +38,7 @@ def perform_boolean_query(tokens: List[Tuple[str, Union[List[str], str]]],
     :param postings_file the read-only binary file descriptor for the postings list file.
     :return: A LinkedList of document IDs that satisfy the boolean query.
     """
-    def get_idf(token: Tuple[str, Union[List[str], str]]) -> float:
+    def get_idf(token: Tuple[str, List[str]]) -> float:
         """
         Helper function to get the IDF of a phrase/term.
 
@@ -52,10 +52,11 @@ def perform_boolean_query(tokens: List[Tuple[str, Union[List[str], str]]],
             # Returns the sum of the idfs of each term (first item in the dictionary tuple)
             return sum(map(lambda term: dictionary[term][0] if term in dictionary else 0, phrase))
         elif term_type == TokenType.NON_PHRASE:
-            term = cast(str, phrase)
+            # We are guaranteed one term as token is non-phrase
+            term = cast(str, phrase[0])
             return dictionary[term][0] if term in dictionary else 0
 
-    def get_postings_list(term_type: str, phrase: Union[List[str], str]) -> LinkedList:
+    def get_postings_list(term_type: str, phrase: List[str]) -> LinkedList:
         """
         Helper function to get a postings list length of a phrase/term.
         Returns empty LinkedList if phrase does not exist.
@@ -63,7 +64,7 @@ def perform_boolean_query(tokens: List[Tuple[str, Union[List[str], str]]],
         if term_type == TokenType.PHRASE:
             return retrieve_phrase(dictionary, postings_file, phrase)
         elif term_type == TokenType.NON_PHRASE:
-            term = cast(str, phrase)
+            term = cast(str, phrase[0])
             return load_postings_list(postings_file, dictionary, term)
 
     # Guard against empty tokens list
