@@ -39,6 +39,7 @@ def process_query(
             open(file_of_output_location, 'w') as output_file:
         query, *relevant_doc_ids = list(query_file)
         query_type, tokens = parse_query(query)
+        # TODO use this logic after VSM is implemented
         # if query_type is QueryType.BOOLEAN:
         #     results = LinkedList()
         # elif query_type is QueryType.FREE_TEXT:
