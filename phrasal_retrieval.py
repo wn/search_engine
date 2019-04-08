@@ -59,14 +59,14 @@ def merge_positions(before_positions: LinkedList[int],
     while before_position is not None and after_position is not None:
         if before_position.value == after_position.value - 1:
             result.append(after_position.value)
-            before_position = before_positions.next()
+            before_position = before_position.next()
             after_position = after.next()
         elif before_position.value < after_position.value - 1:
             if before_position.skip(
-            ) and before_positions.skip().value <= after_position.value - 1:
-                before_position = before_positions.skip()
+            ) and before_position.skip().value <= after_position.value - 1:
+                before_position = before_position.skip()
             else:
-                before_position = before_positions.next()
+                before_position = before_position.next()
         elif after_position.skip(
         ) and after.skip().value - 1 <= before_position.value:
             after_position = after.skip()
