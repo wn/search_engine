@@ -55,24 +55,6 @@ def normalise(token: str) -> str:
     return PorterStemmer().stem(token)
 
 
-def load_postings_list(
-        postings_file: BinaryIO,
-        dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
-        token: str) -> LinkedList[Tuple[str, float]]:
-    """
-    Loads postings list from postings file using the location provided
-    by the dictionary.
-
-    Returns an empty LinkedList if token is not in dictionary.
-    """
-    if token not in dictionary:
-        return LinkedList()
-    _, (offset, length), _ = dictionary[token]
-    postings_file.seek(offset)
-    pickled = postings_file.read(length)
-    return pickle.loads(pickled)
-
-
 def load_positional_index(
         postings_file: BinaryIO,
         dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
