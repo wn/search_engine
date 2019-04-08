@@ -16,7 +16,6 @@ from nltk.stem.porter import PorterStemmer
 from .data_structures import LinkedList, TokenType, QueryType
 
 
-
 def usage() -> None:
     """
     Prints the usage message.
@@ -90,7 +89,7 @@ def load_dictionary(
 def process_query(
         dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
         postings_file_location: str, file_of_queries_location: str,
-        file_of_output_location: str) -> None:
+        file_of_output_location: str) -> LinkedList[int]:
     """
     Process the query in the query file.
     """
@@ -99,11 +98,10 @@ def process_query(
             open(file_of_output_location, 'w') as output_file:
         query, *relevant_doc_ids = list(query_file)
         query_type, tokens = parse_query(query)
-        if query_type is Query.BOOLEAN:
+        if query_type is QueryType.BOOLEAN:
             return LinkedList()
-        elif query_type is Query.FREE_TEXT:
+        elif query_type is QueryType.FREE_TEXT:
             return LinkedList()
-
 
 
 def parse_query(
@@ -118,10 +116,10 @@ def parse_query(
     Note that the query is actually a row in a CSV document with
     space delimiter and double quote as the quote character.
     """
-    import pdb;pdb.set_trace()
+    import pdb; pdb.set_trace()
     tokens = list(csv.reader([query], delimiter=' ', quotechar='"'))[0]
     if 'AND' in tokens:
-        return (QueryType.BOOLEAN
+        return (QueryType.BOOLEAN,
                 [parse_token(token) for token in tokens if token != 'AND'])
     else:
         return (QueryType.FREE_TEXT, [parse_token(token) for token in tokens])
