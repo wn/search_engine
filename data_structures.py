@@ -3,6 +3,7 @@ Implementation of common data structures used.
 """
 from math import sqrt, trunc
 from typing import Optional, List, Iterable, Generic, TypeVar, Tuple
+from enum import Enum
 
 # Useless to add skip pointers if interval = 1 or 2
 SKIP_INTERVAL_THRESHOLD = 3
@@ -52,6 +53,9 @@ class LinkedList(Generic[T]):
 
     def __len__(self) -> int:
         return len(self._data)
+
+    def __bool__(self) -> bool:
+        return self.__len__() > 0
 
     def __iter__(self) -> Iterable[T]:
         for value, _ in self._data:
@@ -107,3 +111,13 @@ class LinkedList(Generic[T]):
         if skip is None:
             return None
         return Node(skip, self)
+
+
+class QueryType(Enum):
+    BOOLEAN = 'boolean'
+    FREE_TEXT = 'freetext'
+
+
+class TokenType(Enum):
+    PHRASE = 'phrase'
+    NON_PHRASE = 'nonphrase'

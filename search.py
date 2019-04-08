@@ -3,17 +3,15 @@ Processes search queries
 """
 
 import csv
-import pickle
 import getopt
 import sys
-from math import log
-from functools import lru_cache
 
 from typing import Dict, Tuple, BinaryIO, List, Union
 
-from nltk.stem.porter import PorterStemmer
 
-from data_structures import LinkedList
+from .data_structures import LinkedList, TokenType, QueryType
+from .boolean_retrieval import perform_boolean_query
+from .search_helpers import *
 
 
 def usage() -> None:
@@ -24,86 +22,11 @@ def usage() -> None:
           " -d dictionary-file -p postings-file -q file-of-queries" +
           " -o output-file-of-results")
 
-
-#######################
-# Parsing and loading #
-#######################
-
-
-def get_weighted_tf(count: int, base: int = 10) -> float:
-    """
-    Calculates the weighted term frequency
-    using the 'logarithm' scheme.
-    """
-    return log(base * count, base)
-
-
-def get_weighted_tfs(counts: Dict[str, int]) -> Dict[str, float]:
-    """
-    Calculate the weighted term frequencies.
-    """
-    return {k: get_weighted_tf(v) for k, v in counts.items()}
-
-
-@lru_cache(maxsize=None)
-def normalise(token: str) -> str:
-    """
-    Returns a normalised token. Normalised tokens are cached for performance
-    """
-    token = token.lower()
-    return PorterStemmer().stem(token)
-
-
-def load_postings_list(
-        postings_file: BinaryIO,
-        dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
-        token: str) -> LinkedList[Tuple[str, float]]:
-    """
-    Loads postings list from postings file using the location provided
-    by the dictionary.
-
-    Returns an empty LinkedList if token is not in dictionary.
-    """
-    if token not in dictionary:
-        return LinkedList()
-    _, (offset, length), _ = dictionary[token]
-    postings_file.seek(offset)
-    pickled = postings_file.read(length)
-    return pickle.loads(pickled)
-
-
-def load_positional_index(
-        postings_file: BinaryIO,
-        dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
-        token: str) -> LinkedList[Tuple[str, LinkedList[int]]]:
-    """
-    Loads positional index from postings file using the location provided
-    by the dictionary.
-
-    Returns an empty LinkedList if token is not in dictionary.
-    """
-    if token not in dictionary:
-        return LinkedList()
-    _, _, (offset, length) = dictionary[token]
-    postings_file.seek(offset)
-    pickled = postings_file.read(length)
-    return pickle.loads(pickled)
-
-
-def load_dictionary(
-        dictionary_file_location: str
-) -> Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]]:
-    """
-    Loads dictionary from dictionary file location.
-    Returns a tuple of (dictionary, vector_lengths)
-    """
-    with open(dictionary_file_location, 'rb') as dictionary_file:
-        return pickle.load(dictionary_file)
-
-
 ####################
 # Query processing #
 ####################
+
+
 def process_query(
         dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
         postings_file_location: str, file_of_queries_location: str,
@@ -116,12 +39,18 @@ def process_query(
             open(file_of_output_location, 'w') as output_file:
         query, *relevant_doc_ids = list(query_file)
         query_type, tokens = parse_query(query)
-        # if query_type == 'boolean':
-        # elif query_type == 'freetext':
+        # TODO use this logic after VSM is implemented
+        # if query_type is QueryType.BOOLEAN:
+        #     results = LinkedList()
+        # elif query_type is QueryType.FREE_TEXT:
+        #     results = LinkedList()
+        results = perform_boolean_query(tokens, dictionary, postings_file)
+        postings = " ".join(str(x) for x in map(lambda n: n[0], results))
+        output_file.write(postings + "\n")
 
 
 def parse_query(
-        query: str) -> Tuple[str, List[Tuple[str, Union[List[str], str]]]]:
+        query: str) -> Tuple[QueryType, List[Tuple[str, Union[List[str], str]]]]:
     """
     Parses query.
 
@@ -132,19 +61,20 @@ def parse_query(
     Note that the query is actually a row in a CSV document with
     space delimiter and double quote as the quote character.
     """
+    # import pdb; pdb.set_trace()
     tokens = list(csv.reader([query], delimiter=' ', quotechar='"'))[0]
     if 'AND' in tokens:
-        return ('boolean',
+        return (QueryType.BOOLEAN,
                 [parse_token(token) for token in tokens if token != 'AND'])
     else:
-        return ('freetext', [parse_token(token) for token in tokens])
+        return (QueryType.FREE_TEXT, [parse_token(token) for token in tokens])
 
 
-def parse_token(token: str) -> Tuple[str, Union[str, List[str]]]:
+def parse_token(token: str) -> Tuple[TokenType, Union[str, List[str]]]:
     if ' ' in token:
-        return ('phrase', [normalise(word) for word in token.split()])
+        return (TokenType.PHRASE, [normalise(word) for word in token.split()])
     else:
-        return ('nonphrase', normalise(token))
+        return (TokenType.NON_PHRASE, normalise(token))
 
 
 # def process_query(query, dictionary, postings_file, output_file):
@@ -167,7 +97,6 @@ def parse_token(token: str) -> Tuple[str, Union[str, List[str]]]:
 #
 #    postings = " ".join(str(x) for x in retrieve_top_ten_scores(scores))
 #    output_file.write(postings + "\n")
-
 
 def main() -> None:
     """
@@ -198,7 +127,7 @@ def main() -> None:
         usage()
         sys.exit(2)
 
-    dictionary = load_dictionary(dictionary_file)
+    dictionary, vector_lengths = load_dictionary(dictionary_file)
 
     process_query(dictionary, postings_file, file_of_queries, file_of_output)
 
