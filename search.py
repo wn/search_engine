@@ -6,7 +6,7 @@ import csv
 import getopt
 import sys
 from typing import Dict, Tuple, BinaryIO, List
-from functools import reduce
+from itertools import chain
 
 from typing import Dict, Tuple, BinaryIO, List, Union
 
@@ -14,7 +14,7 @@ from typing import Dict, Tuple, BinaryIO, List, Union
 from data_structures import LinkedList, TokenType, QueryType
 from ranked_retrieval import get_relevant_docs
 from boolean_retrieval import perform_boolean_query
-from search_helpers import *
+from search_helpers import normalise, load_dictionary
 
 
 def usage() -> None:
@@ -43,9 +43,9 @@ def process_query(
             open(file_of_output_location, 'w') as output_file:
         query, *relevant_doc_ids = list(query_file)
         query_type, tokens = parse_query(query)
-        relevant_doc_ids = [*map(lambda x: x.strip(), relevant_doc_ids)]
-        query_phrase = " ".join(reduce(lambda x, y: x + y, [*map(lambda x: x[1], tokens)]))
-        result = get_relevant_docs(query_phrase, dictionary, vector_lengths, relevant_doc_ids, postings_file)
+        relevant_doc_ids = [x.strip() for x in relevant_doc_ids]
+        query_phrase = " ".join(chain.from_iterable(x for _, x in tokens))
+        result: [LinkedList] = get_relevant_docs(query_phrase, dictionary, vector_lengths, relevant_doc_ids, postings_file)
         if query_type is QueryType.BOOLEAN:
             boolean_results = set(perform_boolean_query(tokens, dictionary, postings_file))
             # Sort documents that satisfy boolean query to be the top results.
@@ -86,9 +86,9 @@ def parse_query(
 def parse_token(token: str) -> Tuple[TokenType, List[str]]:
     tokens = [normalise(word) for word in token.split()]
     if ' ' in token:
-        return (TokenType.PHRASE, tokens)
+        return TokenType.PHRASE, tokens
     else:
-        return (TokenType.NON_PHRASE, tokens)
+        return TokenType.NON_PHRASE, tokens
 
 
 # def process_query(query, dictionary, postings_file, output_file):

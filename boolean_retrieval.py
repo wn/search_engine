@@ -26,7 +26,7 @@ def perform_and(operand_a: LinkedList[int], operand_b: LinkedList[int]) -> Linke
     return result
 
 
-def perform_boolean_query(tokens: List[Tuple[str, List[str]]],
+def perform_boolean_query(tokens: List[Tuple[TokenType, List[str]]],
                           dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
                           postings_file: BinaryIO) -> LinkedList:
     """

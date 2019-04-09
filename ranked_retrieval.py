@@ -26,10 +26,7 @@ def get_relevant_docs(
         idf = dictionary[term][0]
         for doc_id, tf_d in term_postings:
             scores[doc_id] += tf_d * idf
-    normalized_scores = sorted(
-        [(doc_id, score / vector_lengths[doc_id]) for doc_id, score in scores.items()],
-        key=lambda x: x[1],
-        reverse=True)
+    normalized_scores = [x[0] for x in sorted(scores.items(), key=lambda x: x[1], reverse=True)]
     output = LinkedList()
     output.extend(normalized_scores)
     return output
@@ -39,12 +36,12 @@ def query_to_vector(query: str) -> Counter:
     return Counter(map(normalise, query.split(' ')))
 
 
-def rocchio_algorithm(
-        query: Dict[str, int],
-        relevant_docs: List[str],
-        alpha: int,
-        beta: int) -> Dict[str, int]:
-    normalized_query = {k: alpha * v for k, v in query.items()}
-    relevant_docs_centroid = {*filter(lambda x: x in query.keys(),
-                                      {k: beta * v / len(relevant_docs) for k, v in sum(relevant_docs.values())})}
-    return dict(Counter(normalized_query) + Counter(relevant_docs_centroid))
+# def rocchio_algorithm(
+#         query: Dict[str, int],
+#         relevant_docs: List[str],
+#         alpha: int,
+#         beta: int) -> Dict[str, int]:
+#     normalized_query = {k: alpha * v for k, v in query.items()}
+#     relevant_docs_centroid = {*filter(lambda x: x in query.keys(),
+#                                       {k: beta * v / len(relevant_docs) for k, v in sum(relevant_docs.values())})}
+#     return dict(Counter(normalized_query) + Counter(relevant_docs_centroid))
