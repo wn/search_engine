@@ -26,7 +26,9 @@ def get_relevant_docs(
         idf = dictionary[term][0]
         for doc_id, tf_d in term_postings:
             scores[doc_id] += tf_d * idf
-    normalized_scores = [x[0] for x in sorted(scores.items(), key=lambda x: x[1], reverse=True)]
+    normalized_scores = sorted(((doc_id, score / vector_lengths[doc_id]) for doc_id, score in scores.items()),
+                               key=lambda x: x[1],
+                               reverse=True)
     output = LinkedList()
     output.extend(normalized_scores)
     return output

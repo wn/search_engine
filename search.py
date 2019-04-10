@@ -5,7 +5,7 @@ Processes search queries
 import csv
 import getopt
 import sys
-from typing import Dict, Tuple, BinaryIO, List
+from typing import Dict, Tuple, BinaryIO, List, Union
 from itertools import chain
 
 from typing import Dict, Tuple, BinaryIO, List, Union
@@ -63,7 +63,7 @@ def process_query(
 
 
 def parse_query(
-        query: str) -> Tuple[QueryType, List[Tuple[TokenType, List[str]]]]:
+        query: str) -> Tuple[QueryType, List[Tuple[TokenType, Union[List[str], str]]]]:
     """
     Parses query.
 
@@ -83,12 +83,11 @@ def parse_query(
         return QueryType.FREE_TEXT, [parse_token(token) for token in tokens]
 
 
-def parse_token(token: str) -> Tuple[TokenType, List[str]]:
-    tokens = [normalise(word) for word in token.split()]
+def parse_token(token: str) -> Tuple[TokenType, Union[List[str], str]]:
     if ' ' in token:
-        return TokenType.PHRASE, tokens
+        return TokenType.PHRASE, [normalise(word) for word in token.split()]
     else:
-        return TokenType.NON_PHRASE, tokens
+        return TokenType.NON_PHRASE, normalise(token)
 
 
 # def process_query(query, dictionary, postings_file, output_file):
