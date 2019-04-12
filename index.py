@@ -69,6 +69,20 @@ def usage() -> None:
 #     return biword_tokens.union(triword_tokens)
 
 
+def build_document_vectors(
+        data: List[Tuple[str, List[str]]]) -> Dict[str, Dict[str, int]]:
+    """
+    Builds a document vector out of the rows in the data.
+    The dictionary maps a token to its document vector, where document vector
+    is a counter, mapping doc_id to occurrence.
+    """
+    index: Dict[str, Dict[str, int]] = defaultdict(Counter)
+    for doc_id, content in data:
+        for token in content:
+            index[token][doc_id] += 1
+    return index
+
+
 def build_positional_index(
         data: List[Tuple[str, List[str]]]
 ) -> Dict[str, LinkedList[Tuple[str, LinkedList[int]]]]:
@@ -169,13 +183,16 @@ def get_weighted_tf(count: int, base: int = 10) -> float:
 def store_to_postings_file(
         index: Dict[str, LinkedList[Tuple[str, float]]],
         positional_index: Dict[str, LinkedList[Tuple[str, LinkedList[int]]]],
-        output_file_postings: str, num_documents: int
-) -> Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]]:
+        document_vectors: Dict[str, Dict[str, int]], output_file_postings: str,
+        num_documents: int
+) -> Tuple[Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
+           Dict[str, Tuple[int, int]]]:
     """
     Stores the postings in index and the positional index in positional_index
     to postings file and generate a dictionary to access the postings file.
     """
     dictionary = {}
+    document_vectors_dictionary = {}
     with open(output_file_postings, "wb") as postings_file:
         tokens = set(index.keys()).union(set(positional_index.keys()))
         for token in tokens:
@@ -187,30 +204,34 @@ def store_to_postings_file(
             dictionary[token] = (get_idf(num_documents, len(postings)),
                                  (postings_offset, postings_length),
                                  (positional_offset, positional_length))
-    return dictionary
+        for key, value in document_vectors:
+            offset, length = pickle_to_file(postings_file, value)
+            document_vectors_dictionary[key] = (offset, length)
+
+    return dictionary, document_vectors_dictionary
 
 
 def store_to_dictionary_file(
         dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
+        document_vectors_dictionary: Dict[str, Tuple[int, int]],
         vector_lengths: Dict[str, float], output_file_dictionary: str) -> None:
     """
     Stores a tuple of dictionary and vector_lengths to the dictionary file.
     """
     with open(output_file_dictionary, "wb") as dictionary_file:
-        pickle.dump((dictionary, vector_lengths), dictionary_file,
-                    pickle.HIGHEST_PROTOCOL)
+        pickle.dump((dictionary, document_vectors_dictionary, vector_lengths),
+                    dictionary_file, pickle.HIGHEST_PROTOCOL)
 
 
-def pickle_to_file(postings_file: BinaryIO,
-                   linked_list: LinkedList[Any]) -> Tuple[int, int]:
+def pickle_to_file(postings_file: BinaryIO, something: Any) -> Tuple[int, int]:
     """
-    Stores the given linked_list object to a file object postings_file
+    Stores the given object to a file object postings_file
     """
     offset = postings_file.tell()
-    pickled = pickle.dumps(linked_list, pickle.HIGHEST_PROTOCOL)
+    pickled = pickle.dumps(something, pickle.HIGHEST_PROTOCOL)
     length = len(pickled)
     postings_file.write(pickled)
-    return (offset, length)
+    return offset, length
 
 
 def main() -> None:
@@ -256,6 +277,11 @@ def main() -> None:
     index, vector_lengths, num_documents = build_tfidf_index(data)
     print("Time taken = " + str(time.time() - cur_time))
 
+    print("3b. Building document vectors")
+    cur_time = time.time()
+    document_vectors = build_document_vectors(data)
+    print("Time taken = " + str(time.time() - cur_time))
+
     # print("4. Building Biword Triword index")
     # cur_time = time.time()
     # bitriword_index = build_bitriword_index(data)
@@ -268,14 +294,15 @@ def main() -> None:
 
     print("5. Storing to postings file")
     cur_time = time.time()
-    dictionary = store_to_postings_file(index, positional_index,
-                                        output_file_postings, num_documents)
+    dictionary, document_vectors_dictionary = store_to_postings_file(
+        index, positional_index, document_vectors, output_file_postings,
+        num_documents)
     print("Time taken = " + str(time.time() - cur_time))
 
     print("6. Storing to dictionary file")
     cur_time = time.time()
-    store_to_dictionary_file(dictionary, vector_lengths,
-                             output_file_dictionary)
+    store_to_dictionary_file(dictionary, document_vectors_dictionary,
+                             vector_lengths, output_file_dictionary)
     print("Time taken = " + str(time.time() - cur_time))
 
     print("Total time = " + str(time.time() - start_time))
