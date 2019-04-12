@@ -42,17 +42,17 @@ def normalise(token: str) -> str:
 
 
 def load_document_vectors(
-        token: str, postings_file: BinaryIO,
+        doc_id: str, postings_file: BinaryIO,
         document_vector_dictionary: Dict[str, Tuple[int, int]]
 ) -> Dict[str, int]:
     """
-    Loads the document vectors for the given token from the postings file.
+    Loads the document vectors for the given doc_id from the postings file.
 
-    Returns a Counter where the key is doc_id and the value is the occurrence.
+    Returns a Counter where the key is token and the value is the occurrence.
     """
-    if token not in document_vector_dictionary:
+    if doc_id not in document_vector_dictionary:
         return Counter()
-    offset, length = document_vector_dictionary[token]
+    offset, length = document_vector_dictionary[doc_id]
     postings_file.seek(offset)
     pickled = postings_file.read(length)
     return pickle.loads(pickled)
