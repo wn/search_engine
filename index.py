@@ -204,7 +204,7 @@ def store_to_postings_file(
             dictionary[token] = (get_idf(num_documents, len(postings)),
                                  (postings_offset, postings_length),
                                  (positional_offset, positional_length))
-        for key, value in document_vectors:
+        for key, value in document_vectors.items():
             offset, length = pickle_to_file(postings_file, value)
             document_vectors_dictionary[key] = (offset, length)
 
