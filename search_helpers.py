@@ -1,10 +1,14 @@
+"""
+Contains helper methods for search.py
+"""
 import pickle
 
+from typing import Dict, Tuple, BinaryIO
 from math import log
 from collections import Counter
 from functools import lru_cache
+
 from nltk.stem.porter import PorterStemmer
-from typing import Dict, Tuple, BinaryIO
 
 from data_structures import LinkedList
 
@@ -41,6 +45,11 @@ def load_document_vectors(
         token: str, postings_file: BinaryIO,
         document_vector_dictionary: Dict[str, Tuple[int, int]]
 ) -> Dict[str, int]:
+    """
+    Loads the document vectors for the given token from the postings file.
+
+    Returns a Counter where the key is doc_id and the value is the occurrence.
+    """
     if token not in document_vector_dictionary:
         return Counter()
     offset, length = document_vector_dictionary[token]
