@@ -62,7 +62,7 @@ class LinkedList(Generic[T]):
             yield value
 
     def __str__(self) -> str:
-        return " ".join(str(x) for x in map(lambda n: n[0], self._data))
+        return " ".join(str(doc_id) for doc_id in self)
 
     def append(self, value: T) -> None:
         """
