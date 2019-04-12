@@ -2,7 +2,7 @@
 Implementation of common data structures used.
 """
 from math import sqrt, trunc
-from typing import Optional, List, Iterable, Generic, TypeVar, Tuple
+from typing import Optional, List, Iterator, Generic, TypeVar, Tuple
 from enum import Enum
 
 # Useless to add skip pointers if interval = 1 or 2
@@ -57,7 +57,7 @@ class LinkedList(Generic[T]):
     def __bool__(self) -> bool:
         return self.__len__() > 0
 
-    def __iter__(self) -> Iterable[T]:
+    def __iter__(self) -> Iterator[T]:
         for value, _ in self._data:
             yield value
 
