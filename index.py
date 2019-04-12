@@ -191,24 +191,42 @@ def store_to_postings_file(
     Stores the postings in index and the positional index in positional_index
     to postings file and generate a dictionary to access the postings file.
     """
-    dictionary = {}
-    document_vectors_dictionary = {}
     with open(output_file_postings, "wb") as postings_file:
-        tokens = set(index.keys()).union(set(positional_index.keys()))
-        for token in tokens:
-            postings = index[token]
-            postings_offset, postings_length = pickle_to_file(
-                postings_file, postings)
-            positional_offset, positional_length = pickle_to_file(
-                postings_file, positional_index[token])
-            dictionary[token] = (get_idf(num_documents, len(postings)),
-                                 (postings_offset, postings_length),
-                                 (positional_offset, positional_length))
-        for key, value in document_vectors.items():
-            offset, length = pickle_to_file(postings_file, value)
-            document_vectors_dictionary[key] = (offset, length)
+        dictionary = store_postings_positional_to_postings_file(
+            index, positional_index, num_documents, postings_file)
+        document_vectors_dictionary = store_document_vectors_to_postings_file(
+            document_vectors, postings_file)
 
-    return dictionary, document_vectors_dictionary
+        return dictionary, document_vectors_dictionary
+
+
+def store_postings_positional_to_postings_file(
+        index: Dict[str, LinkedList[Tuple[str, float]]],
+        positional_index: Dict[str, LinkedList[Tuple[str, LinkedList[int]]]],
+        num_documents: int, postings_file: BinaryIO
+) -> Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]]:
+    dictionary = {}
+    tokens = set(index.keys()).union(set(positional_index.keys()))
+    for token in tokens:
+        postings = index[token]
+        postings_offset, postings_length = pickle_to_file(
+            postings_file, postings)
+        positional_offset, positional_length = pickle_to_file(
+            postings_file, positional_index[token])
+        dictionary[token] = (get_idf(num_documents, len(postings)),
+                             (postings_offset, postings_length),
+                             (positional_offset, positional_length))
+    return dictionary
+
+
+def store_document_vectors_to_postings_file(
+        document_vectors: Dict[str, Dict[str, int]],
+        postings_file: BinaryIO) -> Dict[str, Tuple[int, int]]:
+    document_vectors_dictionary = {}
+    for key, value in document_vectors.items():
+        offset, length = pickle_to_file(postings_file, value)
+        document_vectors_dictionary[key] = (offset, length)
+    return document_vectors_dictionary
 
 
 def store_to_dictionary_file(
