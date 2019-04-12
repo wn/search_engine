@@ -205,7 +205,7 @@ def store_postings_positional_to_postings_file(
         num_documents: int, postings_file: BinaryIO
 ) -> Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]]:
     dictionary = {}
-    tokens = set(index.keys()).union(set(positional_index.keys()))
+    tokens = set(index).union(set(positional_index))
     for token in tokens:
         postings = index[token]
         postings_offset, postings_length = pickle_to_file(
