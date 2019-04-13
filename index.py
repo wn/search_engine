@@ -76,10 +76,7 @@ def build_document_vectors(
     The dictionary maps a token to its document vector, where document vector
     is a counter, mapping doc_id to occurrence.
     """
-    index: Dict[str, Dict[str, int]] = {}
-    for doc_id, content in data:
-        index[doc_id] = Counter(content)
-    return index
+    return {doc_id: Counter(content) for doc_id, content in data}
 
 
 def build_positional_index(
