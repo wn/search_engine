@@ -14,7 +14,7 @@ from typing import Dict, Tuple, BinaryIO, List, Union
 from data_structures import LinkedList, TokenType, QueryType
 from ranked_retrieval import get_relevant_docs
 from boolean_retrieval import perform_boolean_query
-from search_helpers import normalise, load_dictionary
+from search_helpers import normalise, load_dictionaries
 
 
 def usage() -> None:
@@ -33,7 +33,9 @@ def usage() -> None:
 def process_query(
         dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
         vector_lengths: Dict[str, float],
-        postings_file_location: str, file_of_queries_location: str,
+        postings_file_location: str,
+        file_of_queries_location: str,
+        document_vectors_dictionary: Dict[str, Tuple[int, int]],
         file_of_output_location: str) -> None:
     """
     Process the query in the query file.
@@ -45,9 +47,18 @@ def process_query(
         query_type, tokens = parse_query(query)
         relevant_doc_ids = [x.strip() for x in relevant_doc_ids]
         query_phrase = " ".join(chain.from_iterable(x for _, x in tokens))
-        result: [LinkedList] = get_relevant_docs(query_phrase, dictionary, vector_lengths, relevant_doc_ids, postings_file)
+        result = get_relevant_docs(
+            query_phrase,
+            dictionary,
+            vector_lengths,
+            relevant_doc_ids,
+            document_vectors_dictionary,
+            postings_file)
         if query_type is QueryType.BOOLEAN:
-            boolean_results = set(perform_boolean_query(tokens, dictionary, postings_file))
+            boolean_results = set(perform_boolean_query(
+                tokens,
+                dictionary,
+                postings_file))
             # Sort documents that satisfy boolean query to be the top results.
             relevant_boolean = []
             relevant_non_boolean = []
@@ -141,7 +152,13 @@ def main() -> None:
         sys.exit(2)
 
     dictionary, document_vectors_dictionary, vector_lengths = load_dictionaries(dictionary_file)
-    process_query(dictionary, vector_lengths, postings_file, file_of_queries, file_of_output)
+    process_query(
+        dictionary,
+        vector_lengths,
+        postings_file,
+        file_of_queries,
+        document_vectors_dictionary,
+        file_of_output)
 
 if __name__ == "__main__":
     main()
