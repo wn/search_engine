@@ -41,7 +41,7 @@ def normalise(token: str) -> str:
     return PorterStemmer().stem(token)
 
 
-def load_document_vectors(
+def load_document_vector(
         doc_id: str, postings_file: BinaryIO,
         document_vector_dictionary: Dict[str, Tuple[int, int]]
 ) -> Dict[str, int]:
@@ -94,13 +94,13 @@ def load_positional_index(
     return pickle.loads(pickled)
 
 
-def load_dictionary(
+def load_dictionaries(
         dictionary_file_location: str
-) -> Tuple[Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
+) -> Tuple[Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]], Dict[str, Tuple[int, int]],
            Dict[str, Tuple[int, int]], Dict[str, float]]:
     """
     Loads dictionary from dictionary file location.
-    Returns a tuple of (dictionary, vector_lengths)
+    Returns a tuple of (dictionary, document_vector_dictionary, vector_lengths)
     """
     with open(dictionary_file_location, 'rb') as dictionary_file:
         return pickle.load(dictionary_file)

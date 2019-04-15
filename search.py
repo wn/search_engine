@@ -127,7 +127,7 @@ def main() -> None:
         usage()
         sys.exit(2)
 
-    dictionary, vector_lengths = load_dictionary(dictionary_file)
+    dictionary, document_vectors_dictionary, vector_lengths = load_dictionaries(dictionary_file)
 
     process_query(dictionary, postings_file, file_of_queries, file_of_output)
 
