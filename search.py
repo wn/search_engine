@@ -62,7 +62,7 @@ def process_query(
             # Sort documents that satisfy boolean query to be the top results.
             relevant_boolean = []
             relevant_non_boolean = []
-            for doc_id, _ in result:
+            for doc_id in result:
                 if doc_id in boolean_results:
                     relevant_boolean.append(doc_id)
                 else:

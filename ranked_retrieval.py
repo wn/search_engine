@@ -35,9 +35,9 @@ def get_relevant_docs(
                                 for doc_id, score in scores.items()),
                                key=lambda x: x[1],
                                reverse=True)
-    normalized_scores = [*filter(lambda x: x[1] > THRESHOLD, normalized_scores)]
+    relevant_docs = [x[0] for x in normalized_scores if x[1] > THRESHOLD]
     output = LinkedList()
-    output.extend(map(lambda x:x[0], normalized_scores))
+    output.extend(relevant_docs)
     return output
 
 
@@ -53,9 +53,11 @@ def rocchio_algorithm(
         beta: int, postings_file: BinaryIO) -> Dict[str, int]:
     relevant_docs_sum = Counter()
     for doc_id in relevant_doc_ids:
-        relevant_docs_sum += load_document_vector(doc_id, postings_file, docs_vector)
-    relevant_docs_centroid = Counter({doc_id: beta*count / len(relevant_doc_ids)
-                              for doc_id, count in relevant_docs_sum.items()})
+        relevant_docs_sum += load_document_vector(
+            doc_id, postings_file, docs_vector)
+    relevant_docs_centroid = Counter(
+        {doc_id: beta * count / len(relevant_doc_ids)
+            for doc_id, count in relevant_docs_sum.items()})
 
     normalized_query = Counter({k: alpha * v for k, v in query.items()})
     return dict(normalized_query + relevant_docs_centroid)
