@@ -1,6 +1,6 @@
 from typing import Dict, Tuple, List, BinaryIO, cast
-from .data_structures import LinkedList, Node
-from .search_helpers import load_positional_index
+from data_structures import LinkedList, Node
+from search_helpers import load_positional_index
 
 
 def retrieve_phrase(

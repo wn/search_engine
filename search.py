@@ -9,9 +9,9 @@ import sys
 from typing import Dict, Tuple, BinaryIO, List, Union
 
 
-from .data_structures import LinkedList, TokenType, QueryType
-from .boolean_retrieval import perform_boolean_query
-from .search_helpers import *
+from data_structures import LinkedList, TokenType, QueryType
+from boolean_retrieval import perform_boolean_query
+from search_helpers import *
 
 
 def usage() -> None:

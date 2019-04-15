@@ -1,8 +1,8 @@
 from typing import Tuple, List, Dict, BinaryIO, Union, cast
 
-from .data_structures import LinkedList, TokenType
-from .phrasal_retrieval import retrieve_phrase
-from .search_helpers import load_postings_list
+from data_structures import LinkedList, TokenType
+from phrasal_retrieval import retrieve_phrase
+from search_helpers import load_postings_list
 
 
 def perform_and(operand_a: LinkedList[int], operand_b: LinkedList[int]) -> LinkedList:
