@@ -5,13 +5,16 @@ Processes search queries
 import csv
 import getopt
 import sys
+from typing import Dict, Tuple, BinaryIO, List, Union
+from itertools import chain
 
 from typing import Dict, Tuple, BinaryIO, List, Union
 
 
 from data_structures import LinkedList, TokenType, QueryType
+from ranked_retrieval import get_relevant_docs
 from boolean_retrieval import perform_boolean_query
-from search_helpers import *
+from search_helpers import normalise, load_dictionaries
 
 
 def usage() -> None:
@@ -29,7 +32,10 @@ def usage() -> None:
 
 def process_query(
         dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
-        postings_file_location: str, file_of_queries_location: str,
+        vector_lengths: Dict[str, float],
+        postings_file_location: str,
+        file_of_queries_location: str,
+        document_vectors_dictionary: Dict[str, Tuple[int, int]],
         file_of_output_location: str) -> None:
     """
     Process the query in the query file.
@@ -39,18 +45,36 @@ def process_query(
             open(file_of_output_location, 'w') as output_file:
         query, *relevant_doc_ids = list(query_file)
         query_type, tokens = parse_query(query)
-        # TODO use this logic after VSM is implemented
-        # if query_type is QueryType.BOOLEAN:
-        #     results = LinkedList()
-        # elif query_type is QueryType.FREE_TEXT:
-        #     results = LinkedList()
-        results = perform_boolean_query(tokens, dictionary, postings_file)
-        postings = " ".join(str(x) for x in map(lambda n: n[0], results))
+        relevant_doc_ids = [x.strip() for x in relevant_doc_ids]
+        query_phrase = " ".join(chain.from_iterable(x for _, x in tokens))
+        result = get_relevant_docs(
+            query_phrase,
+            dictionary,
+            vector_lengths,
+            relevant_doc_ids,
+            document_vectors_dictionary,
+            postings_file)
+        if query_type is QueryType.BOOLEAN:
+            boolean_results = set(perform_boolean_query(
+                tokens,
+                dictionary,
+                postings_file))
+            # Sort documents that satisfy boolean query to be the top results.
+            relevant_boolean = []
+            relevant_non_boolean = []
+            for doc_id in result:
+                if doc_id in boolean_results:
+                    relevant_boolean.append(doc_id)
+                else:
+                    relevant_non_boolean.append(doc_id)
+            relevant_boolean.extend(relevant_non_boolean)
+            result = relevant_boolean
+        postings = str(result)
         output_file.write(postings + "\n")
 
 
 def parse_query(
-        query: str) -> Tuple[QueryType, List[Tuple[str, Union[List[str], str]]]]:
+        query: str) -> Tuple[QueryType, List[Tuple[TokenType, Union[List[str], str]]]]:
     """
     Parses query.
 
@@ -67,14 +91,14 @@ def parse_query(
         return (QueryType.BOOLEAN,
                 [parse_token(token) for token in tokens if token != 'AND'])
     else:
-        return (QueryType.FREE_TEXT, [parse_token(token) for token in tokens])
+        return QueryType.FREE_TEXT, [parse_token(token) for token in tokens]
 
 
-def parse_token(token: str) -> Tuple[TokenType, Union[str, List[str]]]:
+def parse_token(token: str) -> Tuple[TokenType, Union[List[str], str]]:
     if ' ' in token:
-        return (TokenType.PHRASE, [normalise(word) for word in token.split()])
+        return TokenType.PHRASE, [normalise(word) for word in token.split()]
     else:
-        return (TokenType.NON_PHRASE, normalise(token))
+        return TokenType.NON_PHRASE, normalise(token)
 
 
 # def process_query(query, dictionary, postings_file, output_file):
@@ -128,9 +152,13 @@ def main() -> None:
         sys.exit(2)
 
     dictionary, document_vectors_dictionary, vector_lengths = load_dictionaries(dictionary_file)
-
-    process_query(dictionary, postings_file, file_of_queries, file_of_output)
-
+    process_query(
+        dictionary,
+        vector_lengths,
+        postings_file,
+        file_of_queries,
+        document_vectors_dictionary,
+        file_of_output)
 
 if __name__ == "__main__":
     main()

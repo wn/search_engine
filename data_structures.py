@@ -61,6 +61,9 @@ class LinkedList(Generic[T]):
         for value, _ in self._data:
             yield value
 
+    def __str__(self) -> str:
+        return " ".join(str(doc_id) for doc_id in self)
+
     def append(self, value: T) -> None:
         """
         Adds a new value to the tail of this linked list.
