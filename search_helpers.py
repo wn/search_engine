@@ -41,10 +41,9 @@ def normalise(token: str) -> str:
     return PorterStemmer().stem(token)
 
 
-def load_document_vector(
-        doc_id: str, postings_file: BinaryIO,
-        document_vector_dictionary: Dict[str, Tuple[int, int]]
-) -> Dict[str, int]:
+def load_document_vector(doc_id: str, postings_file: BinaryIO,
+                         document_vector_dictionary: Dict[str, Tuple[int, int]]
+                         ) -> Dict[str, int]:
     """
     Loads the document vectors for the given doc_id from the postings file.
 
@@ -96,8 +95,9 @@ def load_positional_index(
 
 def load_dictionaries(
         dictionary_file_location: str
-) -> Tuple[Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]], Dict[str, Tuple[int, int]],
-           Dict[str, Tuple[int, int]], Dict[str, float]]:
+) -> Tuple[Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
+           Dict[str, Tuple[int, int]], Dict[str, Tuple[int, int]],
+           Dict[str, float]]:
     """
     Loads dictionary from dictionary file location.
     Returns a tuple of (dictionary, document_vector_dictionary, vector_lengths)

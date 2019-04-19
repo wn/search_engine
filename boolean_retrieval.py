@@ -5,8 +5,11 @@ from phrasal_retrieval import retrieve_phrase
 from search_helpers import load_postings_list
 
 
-def perform_and(operand_a: LinkedList[int], operand_b: LinkedList[int]) -> LinkedList:
-    """Returns all ids that are ids of operand a and operand b. Copied from HW2."""
+def perform_and(operand_a: LinkedList[int],
+                operand_b: LinkedList[int]) -> LinkedList:
+    """
+    Returns all ids that are ids of operand a and operand b. Copied from HW2.
+    """
     result = LinkedList()
     operand_a, operand_b = operand_a.get_head(), operand_b.get_head()
     while operand_a is not None and operand_b is not None:
@@ -26,36 +29,47 @@ def perform_and(operand_a: LinkedList[int], operand_b: LinkedList[int]) -> Linke
     return result
 
 
-def perform_boolean_query(tokens: List[Tuple[str, Union[List[str], str]]],
-                          dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
-                          postings_file: BinaryIO) -> LinkedList:
+def perform_boolean_query(
+        tokens: List[Tuple[str, Union[List[str], str]]],
+        dictionary: Dict[str, Tuple[float, Tuple[int, int], Tuple[int, int]]],
+        postings_file: BinaryIO) -> LinkedList:
     """
-    Returns a LinkedList of documents that satisfy a purely conjunctive boolean query.
+    Returns a LinkedList of documents that satisfy a purely conjunctive boolean
+    query.
 
-    :param tokens: A List containing Tuples with the form (<'phrase' | 'nonphrase', <term>)
-        where <term> is a query term/phrase -- phrases are Lists, single terms are strings.
+    :param tokens: A List containing Tuples with the form
+        (<'phrase' | 'nonphrase', <term>) where <term> is a query term/phrase
+        -- phrases are Lists, single terms are strings.
     :param dictionary the combined TF-IDF and positional index dictionary
-    :param postings_file the read-only binary file descriptor for the postings list file.
+    :param postings_file the read-only binary file descriptor for the postings
+        list file.
     :return: A LinkedList of document IDs that satisfy the boolean query.
     """
+
     def get_idf(token: Tuple[str, Union[List[str], str]]) -> float:
         """
         Helper function to get the IDF of a phrase/term.
 
-        The IDF of a phrase is estimated by summing up the IDF of the individual terms.
-        This works out as phrases usually produce small resultant postings lists,
-        and a phrase with rare terms (high IDF) will produce smaller postings lists than a phrase with common terms.
+        The IDF of a phrase is estimated by summing up the IDF of the
+        individual terms. This works out as phrases usually produce small
+        resultant postings lists, and a phrase with rare terms (high IDF) will
+        produce smaller postings lists than a phrase with common terms.
         """
         term_type, phrase = token
         if term_type == TokenType.PHRASE:
             phrase = cast(List[str], phrase)
-            # Returns the sum of the idfs of each term (first item in the dictionary tuple)
-            return sum(map(lambda term: dictionary[term][0] if term in dictionary else 0, phrase))
+            # Returns the sum of the idfs of each term
+            # (first item in the dictionary tuple)
+            return sum(
+                map(
+                    lambda term: dictionary[term][0]
+                    if term in dictionary else 0, phrase))
         elif term_type == TokenType.NON_PHRASE:
             term = cast(str, phrase)
             return dictionary[term][0] if term in dictionary else 0
 
-    def get_postings_list(term_type: str, phrase: Union[List[str], str]) -> LinkedList:
+    def get_postings_list(term_type: str,
+                          phrase: Union[List[str], str]) -> LinkedList:
         """
         Helper function to get a postings list length of a phrase/term.
         Returns empty LinkedList if phrase does not exist.
@@ -78,7 +92,8 @@ def perform_boolean_query(tokens: List[Tuple[str, Union[List[str], str]]],
 
     # Successively use AND on the tokens' postings lists
     for token in tokens[1:]:
-        # Short circuit for empty LinkedList -- cannot be done easily when using `reduce`
+        # Short circuit for empty LinkedList --
+        # cannot be done easily when using `reduce`
         if len(resultant_list) == 0:
             break
         resultant_list = perform_and(resultant_list, get_postings_list(*token))

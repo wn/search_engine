@@ -18,12 +18,13 @@ def retrieve_phrase(
     if not tokens:
         return LinkedList()
 
-    positional_index = load_positional_index(postings_file, dictionary, tokens[0])
+    positional_index = load_positional_index(postings_file, dictionary,
+                                             tokens[0])
     for token in tokens[1:]:
         next_positional_index = load_positional_index(postings_file,
                                                       dictionary, token)
         positional_index = merge_positional_indexes(positional_index,
-                                          next_positional_index)
+                                                    next_positional_index)
 
     return positional_index
 
@@ -58,23 +59,21 @@ def merge_positional_indexes(before: LinkedList[Tuple[str, LinkedList[int]]],
 def merge_positions(before_positions: LinkedList[int],
                     after_positions: LinkedList[int]):
     result = LinkedList()
-    before, after = before_positions.get_head(
-    ), after_positions.get_head()
+    before, after = before_positions.get_head(), after_positions.get_head()
 
     while before is not None and after is not None:
-        before, after = cast(Node[int], before), cast(Node[int], after)  # typecasting
+        before, after = cast(Node[int], before), cast(Node[int],
+                                                      after)  # typecasting
         if before.value == after.value - 1:
             result.append(after.value)
             before = before.next()
             after = after.next()
         elif before.value < after.value - 1:
-            if before.skip(
-            ) and before.skip().value <= after.value - 1:
+            if before.skip() and before.skip().value <= after.value - 1:
                 before = before.skip()
             else:
                 before = before.next()
-        elif after.skip(
-        ) and after.skip().value - 1 <= before.value:
+        elif after.skip() and after.skip().value - 1 <= before.value:
             after = after.skip()
         else:
             after = after.next()
