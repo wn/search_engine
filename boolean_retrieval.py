@@ -94,7 +94,7 @@ def perform_boolean_query(
     for token in tokens[1:]:
         # Short circuit for empty LinkedList --
         # cannot be done easily when using `reduce`
-        if len(resultant_list) == 0:
+        if not resultant_list:
             break
         resultant_list = perform_and(resultant_list, get_postings_list(*token))
 
