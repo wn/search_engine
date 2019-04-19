@@ -1,6 +1,7 @@
 from typing import Tuple, List, Dict, BinaryIO
-from data_structures import LinkedList
 from collections import Counter, defaultdict
+
+from data_structures import LinkedList
 from search_helpers import normalise, load_postings_list, load_document_vector
 
 ALPHA = 1.0
@@ -15,12 +16,12 @@ def get_relevant_docs(
         document_vectors_dictionary: Dict[str, Tuple[int, int]],
         postings_file: BinaryIO) -> LinkedList:
     query_vector = query_to_vector(query)
-    newQuery = rocchio_algorithm(query_vector, relevant_doc_ids,
-                                 document_vectors_dictionary, ALPHA, BETA,
-                                 postings_file)
+    new_query = rocchio_algorithm(query_vector, relevant_doc_ids,
+                                  document_vectors_dictionary, ALPHA, BETA,
+                                  postings_file)
 
     scores = defaultdict(float)
-    for term, count in newQuery.items():
+    for term, _ in new_query.items():
         if term not in dictionary:
             continue
         term_postings = Counter(
@@ -32,14 +33,14 @@ def get_relevant_docs(
                                 for doc_id, score in scores.items()),
                                key=lambda x: x[1],
                                reverse=True)
-    relevant_docs = [x[0] for x in normalized_scores if x[1] > THRESHOLD]
+    relevant_docs = (x[0] for x in normalized_scores if x[1] > THRESHOLD)
     output = LinkedList()
     output.extend(relevant_docs)
     return output
 
 
 def query_to_vector(query: str) -> Counter:
-    return Counter([normalise(x) for x in query.split(' ')])
+    return Counter(normalise(x) for x in query.split(' '))
 
 
 def rocchio_algorithm(query: Dict[str, int], relevant_doc_ids: List[str],
