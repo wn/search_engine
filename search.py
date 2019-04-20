@@ -56,8 +56,10 @@ def process_query(
             for doc_id in result:
                 if doc_id in boolean_results:
                     relevant_boolean.append(doc_id)
+                    boolean_results.remove(doc_id)
                 else:
                     relevant_non_boolean.append(doc_id)
+            relevant_boolean.extend(boolean_results)
             relevant_boolean.extend(relevant_non_boolean)
             result = relevant_boolean
         postings = str(result)
