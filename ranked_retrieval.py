@@ -20,12 +20,12 @@ def get_relevant_docs(
         document_vectors_dictionary: Dict[str, Tuple[int, int]],
         postings_file: BinaryIO) -> LinkedList:
     query_vector = query_to_vector(query)
+    if QUERY_EXPANSION:
+        query_vector = query_expansion(query_vector)
     if RELEVANT_FEEDBACK:
         query_vector = rocchio_algorithm(query_vector, relevant_doc_ids,
                                          document_vectors_dictionary, ALPHA, BETA,
                                          postings_file)
-    if QUERY_EXPANSION:
-        query_vector = query_expansion(query_vector)
     scores = defaultdict(float)
     for term, factor in query_vector.items():
         if term not in dictionary:
@@ -66,14 +66,14 @@ def rocchio_algorithm(query: Dict[str, int], relevant_doc_ids: List[str],
 
 def query_expansion(query):
     result = defaultdict(float)
-    for term in query.keys():
+    for term, count in query:
         synonyms = []
         syn_term = wordnet.synsets(term)[0]
         for synset in wordnet.synsets(term)[1:]:
             factor = wordnet_score_factor(syn_term, synset)
             if factor:
                 new_term = synset.lemmas()[0].name()
-                result[new_term] += factor
+                result[new_term] += factor * count
     return dict(Counter(result) + Counter(query))
 
 
