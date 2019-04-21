@@ -66,7 +66,7 @@ def rocchio_algorithm(query: Dict[str, int], relevant_doc_ids: List[str],
 
 def query_expansion(query):
     result = defaultdict(float)
-    for term, count in query:
+    for term, count in query.items():
         synonyms = []
         syn_term = wordnet.synsets(term)[0]
         for synset in wordnet.synsets(term)[1:]:
