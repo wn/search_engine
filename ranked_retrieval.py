@@ -20,9 +20,10 @@ def get_relevant_docs(
         document_vectors_dictionary: Dict[str, Tuple[int, int]],
         postings_file: BinaryIO) -> LinkedList:
     query_vector = query_to_vector(query)
-    if QUERY_EXPANSION:
+    if QUERY_EXPANSION:  # Requires non-normalized terms
         query_vector = query_expansion(query_vector)
-    if RELEVANT_FEEDBACK:
+    query_vector = normalized_vector(query_vector)
+    if RELEVANT_FEEDBACK:  # Requires normalized terms
         query_vector = rocchio_algorithm(query_vector, relevant_doc_ids,
                                          document_vectors_dictionary, ALPHA, BETA,
                                          postings_file)
@@ -30,7 +31,7 @@ def get_relevant_docs(
     for term, factor in query_vector.items():
         if term not in dictionary:
             continue
-        term_postings = Counter(load_postings_list(postings_file, dictionary, term))
+        term_postings = load_postings_list(postings_file, dictionary, term)
         idf = dictionary[term][0]
         for doc_id, tf_d in term_postings:
             scores[doc_id] += factor * tf_d * idf
@@ -45,7 +46,14 @@ def get_relevant_docs(
 
 
 def query_to_vector(query: str) -> Counter:
-    return Counter(normalise(x) for x in query.split(' '))
+    return Counter(x for x in query.strip().split(' '))
+
+
+def normalized_vector(query_vector):
+    result = defaultdict(float)
+    for term, value in query_vector.items():
+        result[normalise(term)] += value
+    return result
 
 
 def rocchio_algorithm(query: Dict[str, int], relevant_doc_ids: List[str],
@@ -65,17 +73,25 @@ def rocchio_algorithm(query: Dict[str, int], relevant_doc_ids: List[str],
 
 
 def query_expansion(query):
-    result = defaultdict(float)
+    result = {}
     for term, count in query.items():
-        synonyms = []
-        syn_term = wordnet.synsets(term)[0]
-        for synset in wordnet.synsets(term)[1:]:
+        synonyms = wordnet.synsets(term)
+        if len(synonyms) == 0:
+            continue
+        syn_term = synonyms[0]
+        for synset in synonyms[1:]:
             factor = wordnet_score_factor(syn_term, synset)
-            if factor:
-                new_term = synset.lemmas()[0].name()
-                result[new_term] += factor * count
+            try:
+                new_term = normalise(synset.lemmas()[0].name())
+            except:
+                continue
+            if new_term in result:
+                # We only find highest scoring synonyms
+                continue
+            result[new_term] = factor * count
     return dict(Counter(result) + Counter(query))
 
 
 def wordnet_score_factor(first_word, word):
-    return first_word.wup_similarity(word)
+    result = first_word.wup_similarity(word)
+    return result if result else 0
